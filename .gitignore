@@ -1,0 +1,20 @@
+# Roblox build outputs
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+
+# Wally packages (like node_modules)
+packages/
+dev-packages/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Rojo generated
+sourcemap.json
