@@ -64,10 +64,10 @@ return function()
             end
         end)
 
-        it("contains exactly 40 machines across tiers 1–6", function()
+        it("contains exactly 41 machines across tiers 1–6", function()
             local count = 0
             for _ in pairs(MachineData) do count += 1 end
-            expect(count).to.equal(40)
+            expect(count).to.equal(41)
         end)
     end)
 end
