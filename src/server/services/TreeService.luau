@@ -53,6 +53,14 @@ local function buildTreeModel(tileX: number, tileZ: number): Model
     foliage.CFrame    = CFrame.new(wx, 7.5, wz)
     foliage.Parent    = model
 
+    -- Tag both model and trunk so E-key raycast can identify trees
+    model:SetAttribute("TreeTileX", tileX)
+    model:SetAttribute("TreeTileZ", tileZ)
+    trunk:SetAttribute("TreeTileX", tileX)
+    trunk:SetAttribute("TreeTileZ", tileZ)
+    foliage:SetAttribute("TreeTileX", tileX)
+    foliage:SetAttribute("TreeTileZ", tileZ)
+
     model.PrimaryPart = trunk
     model.Parent      = Workspace
     return model
@@ -158,6 +166,53 @@ function TreeService:harvestNearestTree(centerWorld: Vector3): string?
         end
     end
     return nil
+end
+
+-- Hand-chop: player hits a tree with their chisel. Drops 1 log per hit.
+function TreeService.Client:HitTree(player: Player, tileX: number, tileZ: number): boolean
+    local InventoryService = Knit.GetService("InventoryService")
+    if not InventoryService:hasItems(player, { chisel = 1 }) then return false end
+
+    local char = player.Character
+    local hrp  = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if not hrp then return false end
+
+    local wx   = tileX * TILE
+    local wz   = tileZ * TILE
+    if (hrp.Position - Vector3.new(wx, hrp.Position.Y, wz)).Magnitude > 14 then return false end
+
+    for _, trees in pairs(_plotTrees) do
+        for _, node in ipairs(trees) do
+            if node.tileX == tileX and node.tileZ == tileZ and not node.isFelled then
+                node.health -= 1
+                local healthAfter = node.health
+                local maxHealth   = VSConfig.TREE_HEALTH
+
+                -- Drop 1 log per hit
+                local WorldDropService = Knit.GetService("WorldDropService")
+                local dropPos = hrp.Position + Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
+                WorldDropService:dropItem("log", 1, dropPos)
+
+                if healthAfter <= 0 then
+                    node.isFelled     = true
+                    node.model.Parent = nil
+                    Network.getEvent(Network.Events.TreeHit):FireAllClients(tileX, tileZ, 0, maxHealth)
+                    Network.getEvent(Network.Events.TreeFelled):FireAllClients(tileX, tileZ)
+                    node.regenTask = task.spawn(function()
+                        task.wait(VSConfig.TREE_REGEN_SECONDS)
+                        node.health       = VSConfig.TREE_HEALTH
+                        node.isFelled     = false
+                        node.model.Parent = Workspace
+                        Network.getEvent(Network.Events.TreeRegrown):FireAllClients(tileX, tileZ)
+                    end)
+                else
+                    Network.getEvent(Network.Events.TreeHit):FireAllClients(tileX, tileZ, healthAfter, maxHealth)
+                end
+                return true
+            end
+        end
+    end
+    return false
 end
 
 function TreeService:cleanupPlot(plotId: string)
