@@ -340,7 +340,7 @@ function NotificationController:KnitStart()
     -- Map of instanceId → Blade BasePart for lumber mills we know about
     local machineBlades: {[string]: BasePart} = {}
 
-    -- ── MachinePlaced: register lumber mill blades ────────────────────────────
+    -- ── MachinePlaced: spring scale-in, dust, sound, camera shake ────────────
     Network.getEvent(Network.Events.MachinePlaced).OnClientEvent:Connect(function(
         instanceId: string,
         machineId:  string,
@@ -348,16 +348,47 @@ function NotificationController:KnitStart()
         tileZ:      number,
         _rotation:  number
     )
-        if machineId ~= "lumber_mill" then return end
-        -- The server names the model: machineId .. "_" .. tileX .. "," .. tileZ
         local modelName = machineId .. "_" .. tileX .. "," .. tileZ
-        -- The model is placed directly in Workspace by the server
         local model = Workspace:FindFirstChild(modelName)
-        if model and model:IsA("Model") then
+        if not model or not model:IsA("Model") then return end
+
+        -- Register blade for lumber mill (existing logic)
+        if machineId == "lumber_mill" then
             local blade = (model :: Model):FindFirstChild("Blade")
             if blade and blade:IsA("BasePart") then
                 machineBlades[instanceId] = blade :: BasePart
             end
+        end
+
+        -- Spring scale-in on the Base Part
+        local base = (model :: Model):FindFirstChild("Base") :: BasePart?
+        if base then
+            local origSize = base.Size
+            base.Size = origSize * 0.01
+
+            -- Scale to overshoot
+            TweenService:Create(base, TweenInfo.new(
+                JuiceConfig.PLACE_SCALE_TIME * 0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
+            ), { Size = origSize * JuiceConfig.PLACE_OVERSHOOT }):Play()
+
+            -- Settle to natural size
+            task.delay(JuiceConfig.PLACE_SCALE_TIME * 0.65, function()
+                if base and base.Parent then
+                    TweenService:Create(base, TweenInfo.new(
+                        JuiceConfig.PLACE_SCALE_TIME * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In
+                    ), { Size = origSize }):Play()
+                end
+            end)
+
+            -- Dust burst at the base
+            burstParticles(base, JuiceConfig.COLOR_DUST, JuiceConfig.DUST_ON_PLACE, 8)
+
+            -- Placement sound
+            playSound(JuiceConfig.SFX.MACHINE_PLACE, base, 0.75)
+
+            -- Camera shake
+            local cam = Knit.GetController("CameraController")
+            cam:Shake(JuiceConfig.SHAKE_MACHINE_PLACE, JuiceConfig.SHAKE_DUR_MACHINE_PLACE)
         end
     end)
 

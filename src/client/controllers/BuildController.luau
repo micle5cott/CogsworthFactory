@@ -1,6 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService        = game:GetService("RunService")
+local TweenService      = game:GetService("TweenService")
 local Workspace         = game:GetService("Workspace")
 local Packages          = ReplicatedStorage:WaitForChild("Packages")
 local Knit              = require(Packages:WaitForChild("Knit"))
@@ -19,6 +20,7 @@ local _rotation: number                = 0       -- 0 | 90 | 180 | 270
 local _ghostPart: BasePart?            = nil
 local _conveyorFromTile: {x: number, z: number}? = nil
 local _ghostConveyorPart: Part?        = nil
+local _lastSnappedTile: {x: number, z: number}? = nil
 
 -- ── Ghost model builders (mirrors server procedural models) ──────────────────
 
@@ -86,6 +88,7 @@ function BuildController:cancelPlacement()
     _mode              = "none"
     _selectedMachineId = nil
     _conveyorFromTile  = nil
+    _lastSnappedTile   = nil
     if _ghostPart then
         _ghostPart:Destroy()
         _ghostPart = nil
@@ -180,6 +183,24 @@ function BuildController:KnitStart()
                 local wx, wz = tile.x * TILE, tile.z * TILE
                 _ghostPart.CFrame = CFrame.new(wx, _ghostPart.Size.Y / 2, wz) * CFrame.Angles(0, math.rad(_rotation), 0)
             end
+
+            -- Snap pulse: brief scale pop when cursor crosses onto a new tile
+            if not _lastSnappedTile
+                or _lastSnappedTile.x ~= tile.x
+                or _lastSnappedTile.z ~= tile.z
+            then
+                _lastSnappedTile = tile
+                if _ghostPart then
+                    local origSize = _ghostPart.Size
+                    _ghostPart.Size = origSize * 1.12
+                    TweenService:Create(
+                        _ghostPart,
+                        TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        { Size = origSize }
+                    ):Play()
+                end
+            end
+
             -- Validity: always green for now (server will reject if invalid)
             setGhostValid(true)
 
