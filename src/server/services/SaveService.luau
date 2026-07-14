@@ -55,6 +55,18 @@ function SaveService:loadPlayer(player: Player): DataModel.PlayerData
     end
 
     _sessions[key(player)] = data :: DataModel.PlayerData
+
+    -- Restore persisted machines and conveyors in Workspace
+    local MachineService  = Knit.GetService("MachineService")
+    local ConveyorService = Knit.GetService("ConveyorService")
+    local plotData = (data :: {[string]: any}).plot
+    if plotData and plotData.machines and #plotData.machines > 0 then
+        MachineService:restorePlot(plotData.machines)
+    end
+    if plotData and plotData.conveyors and #plotData.conveyors > 0 then
+        ConveyorService:restoreSegments(plotData.conveyors, player.UserId)
+    end
+
     Network.getEvent(Network.Events.PlayerDataLoaded):FireClient(player, data)
     return data :: DataModel.PlayerData
 end
