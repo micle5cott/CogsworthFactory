@@ -393,6 +393,9 @@ function NotificationController:KnitStart()
     -- Map of instanceId → Blade BasePart for lumber mills we know about
     local machineBlades: {[string]: BasePart} = {}
 
+    -- Guard table to prevent double-animation if StorageUpdated fires rapidly
+    local _lidAnimating: {[string]: boolean} = {}
+
     -- ── MachinePlaced: spring scale-in, dust, sound, camera shake ────────────
     Network.getEvent(Network.Events.MachinePlaced).OnClientEvent:Connect(function(
         instanceId: string,
@@ -618,6 +621,49 @@ function NotificationController:KnitStart()
             pcall(function() snd:Destroy() end)
         end
         _loopingSounds[sndKey] = nil
+    end)
+
+    -- ── StorageUpdated: lid open/close + particle burst + chest sound ─────────
+    Network.getEvent(Network.Events.StorageUpdated).OnClientEvent:Connect(function(
+        instanceId: string, _inventory: {[string]: number}
+    )
+        if _lidAnimating[instanceId] then return end
+
+        -- Find the Lid BasePart by searching for a Model with InstanceId attribute
+        local lid: BasePart? = nil
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj:GetAttribute("InstanceId") == instanceId then
+                local found = (obj :: Model):FindFirstChild("Lid")
+                if found and found:IsA("BasePart") then
+                    lid = found :: BasePart
+                    break
+                end
+            end
+        end
+        if not lid then return end
+
+        _lidAnimating[instanceId] = true
+        local closedCF = lid.CFrame
+        local openCF   = closedCF * CFrame.new(0, 1.5, 0)
+
+        -- Open lid
+        TweenService:Create(lid, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            CFrame = openCF
+        }):Play()
+        burstParticles(lid, JuiceConfig.COLOR_DUST, 6, 5)
+        playSound(JuiceConfig.SFX.STORAGE_FILL, lid, 0.6)
+
+        -- Close lid after a short hold
+        task.delay(0.4, function()
+            if lid and lid.Parent then
+                TweenService:Create(lid, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    CFrame = closedCF
+                }):Play()
+            end
+            task.delay(0.25, function()
+                _lidAnimating[instanceId] = nil
+            end)
+        end)
     end)
 
     -- ── Per-frame: progress bars, belt scroll, mill vibration ─────────────────
