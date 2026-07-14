@@ -2,7 +2,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService        = game:GetService("RunService")
 local Workspace         = game:GetService("Workspace")
-local TweenService      = game:GetService("TweenService")
 local Packages          = ReplicatedStorage:WaitForChild("Packages")
 local Knit              = require(Packages:WaitForChild("Knit"))
 
@@ -17,14 +16,13 @@ local BuildController = Knit.CreateController({ Name = "BuildController" })
 local _mode: "none" | "machine" | "conveyor" = "none"
 local _selectedMachineId: string?      = nil
 local _rotation: number                = 0       -- 0 | 90 | 180 | 270
-local _ghostModel: Model?              = nil
+local _ghostPart: BasePart?            = nil
 local _conveyorFromTile: {x: number, z: number}? = nil
 local _ghostConveyorPart: Part?        = nil
 
 -- ── Ghost model builders (mirrors server procedural models) ──────────────────
 
-local function buildGhostBase(tileX: number, tileZ: number, rotation: number, machineId: string): Model
-    local model = Instance.new("Model")
+local function buildGhostBase(tileX: number, tileZ: number, rotation: number, machineId: string): BasePart
     local wx, wz = tileX * TILE, tileZ * TILE
 
     local base = Instance.new("Part")
@@ -45,20 +43,14 @@ local function buildGhostBase(tileX: number, tileZ: number, rotation: number, ma
         base.BrickColor = BrickColor.new("Bright yellow")
     end
 
-    base.Parent    = model
-    model.PrimaryPart = base
-    model.Parent   = Workspace
-    return model
+    base.Parent = Workspace
+    return base
 end
 
 local function setGhostValid(valid: boolean)
-    if not _ghostModel then return end
+    if not _ghostPart then return end
     local color = if valid then BrickColor.new("Bright green") else BrickColor.new("Bright red")
-    for _, part in ipairs(_ghostModel:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.BrickColor = color
-        end
-    end
+    _ghostPart.BrickColor = color
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
@@ -94,9 +86,9 @@ function BuildController:cancelPlacement()
     _mode              = "none"
     _selectedMachineId = nil
     _conveyorFromTile  = nil
-    if _ghostModel then
-        _ghostModel:Destroy()
-        _ghostModel = nil
+    if _ghostPart then
+        _ghostPart:Destroy()
+        _ghostPart = nil
     end
     if _ghostConveyorPart then
         _ghostConveyorPart:Destroy()
@@ -108,7 +100,10 @@ function BuildController:confirmPlacement()
     if _mode ~= "machine" or not _selectedMachineId then return end
 
     local InputController = Knit.GetController("InputController")
-    local tile = InputController:GetCursorTilePosition(TILE)
+    local ignoreList: {Instance} = {}
+    if _ghostPart then table.insert(ignoreList, _ghostPart) end
+    if _ghostConveyorPart then table.insert(ignoreList, _ghostConveyorPart) end
+    local tile = InputController:GetCursorTilePosition(TILE, ignoreList)
     if not tile then return end
 
     local machineService = Knit.GetService("MachineService")
@@ -126,7 +121,10 @@ end
 function BuildController:confirmPlacementConveyorStart()
     if _mode ~= "conveyor" then return end
     local InputController = Knit.GetController("InputController")
-    local tile = InputController:GetCursorTilePosition(TILE)
+    local ignoreList: {Instance} = {}
+    if _ghostPart then table.insert(ignoreList, _ghostPart) end
+    if _ghostConveyorPart then table.insert(ignoreList, _ghostConveyorPart) end
+    local tile = InputController:GetCursorTilePosition(TILE, ignoreList)
     if not tile then return end
     _conveyorFromTile = tile
 end
@@ -134,10 +132,20 @@ end
 function BuildController:confirmConveyorEnd()
     if _mode ~= "conveyor" or not _conveyorFromTile then return end
     local InputController = Knit.GetController("InputController")
-    local tile = InputController:GetCursorTilePosition(TILE)
+    local ignoreList: {Instance} = {}
+    if _ghostPart then table.insert(ignoreList, _ghostPart) end
+    if _ghostConveyorPart then table.insert(ignoreList, _ghostConveyorPart) end
+    local tile = InputController:GetCursorTilePosition(TILE, ignoreList)
     if not tile then return end
 
     local from = _conveyorFromTile
+    local dx = math.abs(tile.x - from.x)
+    local dz = math.abs(tile.z - from.z)
+    if dx + dz ~= 1 then
+        warn("[BuildController] Conveyor: tiles are not adjacent")
+        return
+    end
+
     local conveyorService = Knit.GetService("ConveyorService")
     local ok, err = conveyorService:PlaceConveyor(from.x, from.z, tile.x, tile.z)
     if not ok and err then
@@ -156,27 +164,30 @@ function BuildController:KnitStart()
 
     RunService.RenderStepped:Connect(function()
         if _mode == "machine" and _selectedMachineId then
-            local tile = InputController:GetCursorTilePosition(TILE)
+            local ignoreList: {Instance} = {}
+            if _ghostPart then table.insert(ignoreList, _ghostPart) end
+            if _ghostConveyorPart then table.insert(ignoreList, _ghostConveyorPart) end
+            local tile = InputController:GetCursorTilePosition(TILE, ignoreList)
             if not tile then
-                if _ghostModel then _ghostModel.Parent = nil end
+                if _ghostPart then _ghostPart:Destroy(); _ghostPart = nil end
                 return
             end
 
-            if not _ghostModel or _ghostModel.Parent == nil then
-                if _ghostModel then _ghostModel:Destroy() end
-                _ghostModel = buildGhostBase(tile.x, tile.z, _rotation, _selectedMachineId)
+            if not _ghostPart or _ghostPart.Parent == nil then
+                if _ghostPart then _ghostPart:Destroy() end
+                _ghostPart = buildGhostBase(tile.x, tile.z, _rotation, _selectedMachineId)
             else
                 local wx, wz = tile.x * TILE, tile.z * TILE
-                local base = _ghostModel:FindFirstChild("GhostBase") :: BasePart?
-                if base then
-                    base.CFrame = CFrame.new(wx, base.Size.Y / 2, wz) * CFrame.Angles(0, math.rad(_rotation), 0)
-                end
+                _ghostPart.CFrame = CFrame.new(wx, _ghostPart.Size.Y / 2, wz) * CFrame.Angles(0, math.rad(_rotation), 0)
             end
             -- Validity: always green for now (server will reject if invalid)
             setGhostValid(true)
 
         elseif _mode == "conveyor" then
-            local tile = InputController:GetCursorTilePosition(TILE)
+            local ignoreList: {Instance} = {}
+            if _ghostPart then table.insert(ignoreList, _ghostPart) end
+            if _ghostConveyorPart then table.insert(ignoreList, _ghostConveyorPart) end
+            local tile = InputController:GetCursorTilePosition(TILE, ignoreList)
             if tile and _conveyorFromTile then
                 -- Show a preview line from fromTile to cursor
                 if not _ghostConveyorPart then
@@ -206,9 +217,9 @@ function BuildController:KnitStart()
             end
         else
             -- Clean up ghosts when not in build mode
-            if _ghostModel then
-                _ghostModel:Destroy()
-                _ghostModel = nil
+            if _ghostPart then
+                _ghostPart:Destroy()
+                _ghostPart = nil
             end
             if _ghostConveyorPart then
                 _ghostConveyorPart:Destroy()

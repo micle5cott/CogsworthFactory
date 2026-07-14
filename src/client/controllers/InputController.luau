@@ -10,11 +10,11 @@ local InputController = Knit.CreateController({ Name = "InputController" })
 local _camera = Workspace.CurrentCamera
 
 -- Returns the world tile position under the mouse cursor, or nil.
-function InputController:GetCursorTilePosition(tileSize: number): {x: number, z: number}?
+function InputController:GetCursorTilePosition(tileSize: number, ignoreList: {Instance}?): {x: number, z: number}?
     local mouse = game:GetService("Players").LocalPlayer:GetMouse()
     local unitRay = _camera:ScreenPointToRay(mouse.X, mouse.Y)
     local ray = Ray.new(unitRay.Origin, unitRay.Direction * 1000)
-    local hitInstance, hitPos = Workspace:FindPartOnRayWithIgnoreList(ray, {})
+    local hitInstance, hitPos = Workspace:FindPartOnRayWithIgnoreList(ray, ignoreList or {})
     if not hitPos then return nil end
     return {
         x = math.round(hitPos.X / tileSize),
