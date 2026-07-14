@@ -115,13 +115,10 @@ function ConveyorService.Client:PlaceConveyor(
         return false, "a conveyor already starts at this tile"
     end
 
-    -- Check and deduct cost
-    local price = VSConfig.MACHINE_SHOP_PRICES.conveyor_belt or 5
-    if price > 0 then
-        local EconomyService = Knit.GetService("EconomyService")
-        local ok, err = EconomyService:deductCoins(player, price)
-        if not ok then return false, err end
-    end
+    -- Deduct conveyor belt item from inventory
+    local InventoryService = Knit.GetService("InventoryService")
+    local ok, err = InventoryService:removeItems(player, { conveyor_belt_item = 1 })
+    if not ok then return false, err end
 
     local id    = newSegId()
     local model = buildConveyorModel(fromX, fromZ, toX, toZ)
@@ -166,13 +163,9 @@ function ConveyorService.Client:RemoveConveyor(player: Player, segmentId: string
     if not seg then return false end
     if seg.plotOwnerId ~= player.UserId then return false end
 
-    -- Refund
-    local price  = VSConfig.MACHINE_SHOP_PRICES.conveyor_belt or 5
-    local refund = math.floor(price * (VSConfig.MACHINE_REFUND_FRACTION or 0.5))
-    if refund > 0 then
-        local EconomyService = Knit.GetService("EconomyService")
-        EconomyService:awardCoins(player, refund)
-    end
+    -- Return belt item to inventory
+    local InventoryService = Knit.GetService("InventoryService")
+    InventoryService:addItem(player, "conveyor_belt_item", 1)
 
     if seg.model then seg.model:Destroy() end
 
@@ -214,30 +207,21 @@ end
 -- ── Simulation tick ───────────────────────────────────────────────────────────
 
 local function deliverItem(item: InTransitItem, seg: SegmentEntry)
-    local toKey    = tileKey(seg.toX, seg.toZ)
-    local MachineService  = Knit.GetService("MachineService")
-    local StorageService  = Knit.GetService("StorageService")
-    local SellerService   = Knit.GetService("SellerService")
-    local atTile   = MachineService:getAtTile(toKey)
+    local toKey      = tileKey(seg.toX, seg.toZ)
+    local MachineService = Knit.GetService("MachineService")
+    local StorageService = Knit.GetService("StorageService")
+    local atTile     = MachineService:getAtTile(toKey)
 
     if atTile then
-        if atTile.machineId == "lumber_mill" then
+        if atTile.machineId == "lumber_mill" or atTile.machineId == "smelter" then
             MachineService:receiveInput(atTile.instanceId, item.itemId)
             Network.getEvent(Network.Events.ItemDelivered):FireAllClients(seg.toX, seg.toZ, item.itemId)
         elseif atTile.machineId == "storage_chest" then
-            -- Find the player who owns this plot
             local owner = nil
             for _, p in ipairs(Players:GetPlayers()) do
-                if p.UserId == item.plotOwnerId then owner = p break end
+                if p.UserId == item.plotOwnerId then owner = p; break end
             end
             if owner then StorageService:receiveItem(atTile.instanceId, item.itemId, owner) end
-            Network.getEvent(Network.Events.ItemDelivered):FireAllClients(seg.toX, seg.toZ, item.itemId)
-        elseif atTile.machineId == "seller_station" then
-            local owner = nil
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p.UserId == item.plotOwnerId then owner = p break end
-            end
-            if owner then SellerService:sellItem(atTile.instanceId, item.itemId, owner) end
             Network.getEvent(Network.Events.ItemDelivered):FireAllClients(seg.toX, seg.toZ, item.itemId)
         end
     else
@@ -290,8 +274,8 @@ function ConveyorService:tick()
         -- Check what's at the from-tile
         local fromKey  = tileKey(seg.fromX, seg.fromZ)
         local atSource = MachineService:getAtTile(fromKey)
-        if atSource and atSource.machineId == "lumber_mill" then
-            -- Also check output tile alignment
+        local isProcessor = atSource and (atSource.machineId == "lumber_mill" or atSource.machineId == "smelter")
+        if isProcessor and atSource then
             local outTile = MachineService:getOutputTile(atSource.instanceId)
             if outTile and tileKey(outTile.x, outTile.z) == fromKey then
                 local itemId = MachineService:consumeOutput(atSource.instanceId)

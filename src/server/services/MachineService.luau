@@ -12,37 +12,37 @@ local Network    = require(ReplicatedStorage.Shared.Network)
 local TILE = GameConfig.TILE_SIZE_STUDS
 local log  = Logger.new("MachineService")
 
--- ── Types ─────────────────────────────────────────────────────────────────────
-
 type MachineRecord = {
     instanceId:   string,
     machineId:    string,
     tileX:        number,
     tileZ:        number,
     rotation:     number,
-    inputBuffer:  {string},   -- itemId queue
-    outputBuffer: {string},   -- itemId queue
-    processTimer: number,     -- ticks since last processing cycle started
+    inputBuffer:  {string},
+    outputBuffer: {string},
+    processTimer: number,
     model:        Model?,
 }
 
--- ── State ─────────────────────────────────────────────────────────────────────
+local MachineService = Knit.CreateService({ Name = "MachineService", Client = {} })
 
-local MachineService = Knit.CreateService({
-    Name = "MachineService",
-    Client = {},
-})
-
--- instanceId → MachineRecord
-local _machines: {[string]: MachineRecord} = {}
--- tileKey → instanceId
-local _tileOccupied: {[string]: string} = {}
--- simple counter for unique IDs
-local _nextId = 0
--- simulation speed multiplier (changed by DevService)
+local _machines:     {[string]: MachineRecord} = {}
+local _tileOccupied: {[string]: string}        = {}
+local _nextId    = 0
 local _tickMult: number = 1.0
 
--- ── Helpers ───────────────────────────────────────────────────────────────────
+local VALID_MACHINES: {[string]: boolean} = {
+    lumber_mill   = true,
+    smelter       = true,
+    storage_chest = true,
+}
+
+-- Maps machineId → the inventory item id used to carry/place it
+local MACHINE_ITEM: {[string]: string} = {
+    lumber_mill   = "lumber_mill_item",
+    smelter       = "smelter_item",
+    storage_chest = "storage_chest_item",
+}
 
 local function tileKey(x: number, z: number): string
     return x .. "," .. z
@@ -53,7 +53,6 @@ local function newId(): string
     return "m_" .. _nextId
 end
 
--- Returns the output tile based on machine tile + rotation.
 local function outputTile(tileX: number, tileZ: number, rotation: number): {x: number, z: number}
     if rotation == 0   then return {x = tileX,     z = tileZ + 1} end
     if rotation == 90  then return {x = tileX + 1, z = tileZ    } end
@@ -62,12 +61,10 @@ local function outputTile(tileX: number, tileZ: number, rotation: number): {x: n
     return {x = tileX, z = tileZ + 1}
 end
 
--- Build a procedural model for each machine type.
 local function buildModel(machineId: string, tileX: number, tileZ: number, rotation: number): Model
-    local wx = tileX * TILE
-    local wz = tileZ * TILE
-    local model = Instance.new("Model")
-    model.Name = machineId .. "_" .. tileKey(tileX, tileZ)
+    local wx, wz = tileX * TILE, tileZ * TILE
+    local model  = Instance.new("Model")
+    model.Name   = machineId .. "_" .. tileKey(tileX, tileZ)
 
     local base = Instance.new("Part")
     base.Name     = "Base"
@@ -78,7 +75,6 @@ local function buildModel(machineId: string, tileX: number, tileZ: number, rotat
     if machineId == "lumber_mill" then
         base.BrickColor = BrickColor.new("Medium stone grey")
         base.Material   = Enum.Material.SmoothPlastic
-
         local blade = Instance.new("Part")
         blade.Name      = "Blade"
         blade.Shape     = Enum.PartType.Cylinder
@@ -89,12 +85,26 @@ local function buildModel(machineId: string, tileX: number, tileZ: number, rotat
         blade.CFrame    = CFrame.new(wx, 3, wz) * CFrame.Angles(0, 0, math.pi / 2)
         blade.Parent    = model
 
+    elseif machineId == "smelter" then
+        base.BrickColor = BrickColor.new("Bright red")
+        base.Material   = Enum.Material.SmoothPlastic
+        base.Size       = Vector3.new(TILE - 0.2, 3, TILE - 0.2)
+        base.CFrame     = CFrame.new(wx, 1.5, wz) * CFrame.Angles(0, math.rad(rotation), 0)
+        local chimney = Instance.new("Part")
+        chimney.Name      = "Chimney"
+        chimney.Anchored  = true
+        chimney.CanCollide = false
+        chimney.Size      = Vector3.new(1, 2, 1)
+        chimney.BrickColor = BrickColor.new("Dark stone grey")
+        chimney.Material  = Enum.Material.SmoothPlastic
+        chimney.CFrame    = CFrame.new(wx, 4.5, wz)
+        chimney.Parent    = model
+
     elseif machineId == "storage_chest" then
         base.BrickColor = BrickColor.new("Nougat")
         base.Material   = Enum.Material.Wood
         base.Size       = Vector3.new(TILE - 0.2, TILE - 0.2, TILE - 0.2)
-        base.CFrame     = CFrame.new(wx, (TILE - 0.2) / 2, wz) * CFrame.Angles(0, math.rad(rotation), 0)
-
+        base.CFrame     = CFrame.new(wx, (TILE - 0.2) / 2, wz)
         local lid = Instance.new("Part")
         lid.Name       = "Lid"
         lid.Size       = Vector3.new(TILE - 0.2, 0.25, TILE - 0.2)
@@ -104,34 +114,22 @@ local function buildModel(machineId: string, tileX: number, tileZ: number, rotat
         lid.CanCollide = false
         lid.CFrame     = CFrame.new(wx, (TILE - 0.2) + 0.125, wz)
         lid.Parent     = model
-
-    elseif machineId == "seller_station" then
-        base.BrickColor = BrickColor.new("Bright yellow")
-        base.Material   = Enum.Material.SmoothPlastic
-
-        local arch = Instance.new("Part")
-        arch.Name      = "Arch"
-        arch.Size      = Vector3.new(TILE - 0.2, 0.5, 0.5)
-        arch.BrickColor = BrickColor.new("Bright yellow")
-        arch.Anchored  = true
-        arch.CFrame    = CFrame.new(wx, 3.5, wz)
-        arch.Parent    = model
     end
 
-    base.Parent    = model
+    base.Parent       = model
     model.PrimaryPart = base
-    model.Parent   = Workspace
+    model.Parent      = Workspace
     return model
 end
 
--- ── Public API (called by ConveyorService and other services) ─────────────────
+-- ── Public API ────────────────────────────────────────────────────────────────
 
 function MachineService:getAtTile(key: string): {instanceId: string, machineId: string}?
     local id = _tileOccupied[key]
     if not id then return nil end
     local m = _machines[id]
     if not m then return nil end
-    return {instanceId = id, machineId = m.machineId}
+    return { instanceId = id, machineId = m.machineId }
 end
 
 function MachineService:consumeOutput(instanceId: string): string?
@@ -143,7 +141,7 @@ end
 function MachineService:receiveInput(instanceId: string, itemId: string): boolean
     local m = _machines[instanceId]
     if not m then return false end
-    if #m.inputBuffer >= 10 then return false end  -- buffer full
+    if #m.inputBuffer >= 10 then return false end
     table.insert(m.inputBuffer, itemId)
     return true
 end
@@ -162,38 +160,33 @@ end
 
 -- ── Placement ─────────────────────────────────────────────────────────────────
 
-local VALID_MACHINES = {
-    lumber_mill    = true,
-    storage_chest  = true,
-    seller_station = true,
-}
-
 function MachineService.Client:PlaceMachine(
     player: Player,
     machineId: string,
-    tileX: number,
-    tileZ: number,
+    tileX: number, tileZ: number,
     rotation: number
 ): (boolean, string?)
     if not VALID_MACHINES[machineId] then
         return false, "unknown machine: " .. machineId
     end
     local key = tileKey(tileX, tileZ)
-    if _tileOccupied[key] then
-        return false, "tile occupied"
-    end
+    if _tileOccupied[key] then return false, "tile occupied" end
 
-    -- Check and deduct cost
-    local price = VSConfig.MACHINE_SHOP_PRICES[machineId] or 0
-    if price > 0 then
-        local EconomyService = Knit.GetService("EconomyService")
-        local ok, err = EconomyService:deductCoins(player, price)
+    local CraftingBenchService = Knit.GetService("CraftingBenchService")
+    if CraftingBenchService:isTileOccupied(key) then return false, "tile occupied by bench" end
+
+    -- Deduct machine item from inventory
+    local itemId = MACHINE_ITEM[machineId]
+    if itemId then
+        local InventoryService = Knit.GetService("InventoryService")
+        local ok, err = InventoryService:removeItems(player, { [itemId] = 1 })
         if not ok then return false, err end
     end
 
     local id    = newId()
     local model = buildModel(machineId, tileX, tileZ, rotation)
     model:SetAttribute("InstanceId", id)
+    model.PrimaryPart:SetAttribute("InstanceId", id)
 
     local record: MachineRecord = {
         instanceId   = id,
@@ -206,10 +199,9 @@ function MachineService.Client:PlaceMachine(
         processTimer = 0,
         model        = model,
     }
-    _machines[id]     = record
+    _machines[id]      = record
     _tileOccupied[key] = id
 
-    -- Persist to session
     local SaveService = Knit.GetService("SaveService")
     local data = SaveService:getSession(player)
     if data then
@@ -232,22 +224,19 @@ function MachineService.Client:RemoveMachine(player: Player, instanceId: string)
     local m = _machines[instanceId]
     if not m then return false end
 
-    -- Refund
-    local price = VSConfig.MACHINE_SHOP_PRICES[m.machineId] or 0
-    local refund = math.floor(price * VSConfig.MACHINE_REFUND_FRACTION)
-    if refund > 0 then
-        local EconomyService = Knit.GetService("EconomyService")
-        EconomyService:awardCoins(player, refund)
+    -- Return machine item to inventory
+    local itemId = MACHINE_ITEM[m.machineId]
+    if itemId then
+        local InventoryService = Knit.GetService("InventoryService")
+        InventoryService:addItem(player, itemId, 1)
     end
 
-    -- Destroy model
     if m.model then m.model:Destroy() end
 
     local key = tileKey(m.tileX, m.tileZ)
     _tileOccupied[key] = nil
     _machines[instanceId] = nil
 
-    -- Persist removal
     local SaveService = Knit.GetService("SaveService")
     local data = SaveService:getSession(player)
     if data then
@@ -265,17 +254,10 @@ function MachineService.Client:RemoveMachine(player: Player, instanceId: string)
     return true
 end
 
--- Returns all placed machines so the client can rebuild visuals on join.
 function MachineService.Client:GetAllMachines(_player: Player): {{instanceId: string, machineId: string, tileX: number, tileZ: number, rotation: number}}
     local result = {}
     for id, m in pairs(_machines) do
-        table.insert(result, {
-            instanceId = id,
-            machineId  = m.machineId,
-            tileX      = m.tileX,
-            tileZ      = m.tileZ,
-            rotation   = m.rotation,
-        })
+        table.insert(result, { instanceId = id, machineId = m.machineId, tileX = m.tileX, tileZ = m.tileZ, rotation = m.rotation })
     end
     return result
 end
@@ -283,29 +265,27 @@ end
 -- ── Simulation tick ───────────────────────────────────────────────────────────
 
 function MachineService:tick()
-    local TreeService = Knit.GetService("TreeService")
-
     for id, m in pairs(_machines) do
-        if m.machineId ~= "lumber_mill" then continue end
-
         m.processTimer += 1
 
-        -- If input buffer is empty, try to harvest a tree nearby
-        if #m.inputBuffer == 0 then
-            local center = Vector3.new(m.tileX * TILE, 1, m.tileZ * TILE)
-            local item = TreeService:harvestNearestTree(center)
-            if item then
-                table.insert(m.inputBuffer, item)
+        if m.machineId == "lumber_mill" then
+            if m.processTimer >= VSConfig.LUMBER_MILL_PROCESS_TICKS and #m.inputBuffer > 0 then
+                m.processTimer = 0
+                local itemId = table.remove(m.inputBuffer, 1)
+                if itemId == "log" then
+                    table.insert(m.outputBuffer, "lumber")
+                    Network.getEvent(Network.Events.MachineOutput):FireAllClients(id, "lumber")
+                end
             end
-        end
 
-        -- Process: consume 1 log → 1 lumber after LUMBER_MILL_PROCESS_TICKS
-        if m.processTimer >= VSConfig.LUMBER_MILL_PROCESS_TICKS and #m.inputBuffer > 0 then
-            m.processTimer = 0
-            local itemId = table.remove(m.inputBuffer, 1)
-            if itemId == "log" then
-                table.insert(m.outputBuffer, "lumber")
-                Network.getEvent(Network.Events.MachineOutput):FireAllClients(id, "lumber")
+        elseif m.machineId == "smelter" then
+            if m.processTimer >= VSConfig.SMELTER_PROCESS_TICKS and #m.inputBuffer > 0 then
+                m.processTimer = 0
+                local itemId = table.remove(m.inputBuffer, 1)
+                if itemId == "iron_ore" then
+                    table.insert(m.outputBuffer, "iron_ingot")
+                    Network.getEvent(Network.Events.MachineOutput):FireAllClients(id, "iron_ingot")
+                end
             end
         end
     end
@@ -313,16 +293,16 @@ end
 
 -- ── Restore from save ─────────────────────────────────────────────────────────
 
--- Called by SaveService integration (Task 6) when a player's session is loaded.
--- Rebuilds in-memory state and Workspace models from persisted data.
 function MachineService:restorePlot(savedMachines: {{instanceId: string, machineId: string, position: {x: number, z: number}, rotation: number}})
     for _, saved in ipairs(savedMachines) do
         if not VALID_MACHINES[saved.machineId] then continue end
         local key = tileKey(saved.position.x, saved.position.z)
-        if _tileOccupied[key] then continue end  -- conflict guard
+        if _tileOccupied[key] then continue end
 
         local model = buildModel(saved.machineId, saved.position.x, saved.position.z, saved.rotation)
         model:SetAttribute("InstanceId", saved.instanceId)
+        model.PrimaryPart:SetAttribute("InstanceId", saved.instanceId)
+
         local record: MachineRecord = {
             instanceId   = saved.instanceId,
             machineId    = saved.machineId,
@@ -342,22 +322,18 @@ function MachineService:restorePlot(savedMachines: {{instanceId: string, machine
         )
     end
 
-    -- Advance _nextId past any restored IDs to prevent collisions
     for _, saved in ipairs(savedMachines) do
         local n = tonumber(string.match(saved.instanceId, "^m_(%d+)$"))
         if n and n > _nextId then _nextId = n end
     end
 end
 
--- ── Lifecycle ─────────────────────────────────────────────────────────────────
-
--- ── Dev helpers (called by DevService in Studio) ──────────────────────────────
+-- ── Dev helpers ───────────────────────────────────────────────────────────────
 
 function MachineService:setTickMultiplier(mult: number)
     _tickMult = math.clamp(mult, 0.25, 20)
 end
 
--- Removes every machine and notifies clients. Clears all service state.
 function MachineService:resetAll()
     for id, m in pairs(_machines) do
         if m.model then m.model:Destroy() end
@@ -368,7 +344,6 @@ function MachineService:resetAll()
     _nextId       = 0
 end
 
--- Puts `count` logs into every lumber mill's input buffer.
 function MachineService:fillAllMills(count: number)
     for _, m in pairs(_machines) do
         if m.machineId ~= "lumber_mill" then continue end
@@ -383,8 +358,7 @@ function MachineService:debugPrintState()
     warn("── MachineService state ──────────────────")
     for id, m in pairs(_machines) do
         warn(string.format("  [%s] %s @ (%d,%d)  in=%d out=%d",
-            id, m.machineId, m.tileX, m.tileZ,
-            #m.inputBuffer, #m.outputBuffer))
+            id, m.machineId, m.tileX, m.tileZ, #m.inputBuffer, #m.outputBuffer))
     end
     if next(_machines) == nil then warn("  (no machines)") end
 end
@@ -392,7 +366,6 @@ end
 function MachineService:KnitInit() end
 
 function MachineService:KnitStart()
-    -- Simulation tick loop — respects _tickMult set by DevService
     task.spawn(function()
         while true do
             task.wait((1 / VSConfig.MACHINE_TICK_HZ) / _tickMult)
