@@ -67,6 +67,34 @@ function SaveService:loadPlayer(player: Player): DataModel.PlayerData
         ConveyorService:restoreSegments(plotData.conveyors, player.UserId)
     end
 
+    -- Load inventory, seed chisel for new players
+    local InventoryService = Knit.GetService("InventoryService")
+    InventoryService:loadFromSave(player, (data :: {[string]: any}).inventory or {})
+    InventoryService:seedChisel(player)
+
+    -- Spawn world: trees, deposits, Nova Machina
+    local TreeService    = Knit.GetService("TreeService")
+    local DepositService = Knit.GetService("DepositService")
+    local NovaMachinaService = Knit.GetService("NovaMachinaService")
+
+    local plotOrigin = Vector3.new(0, 0, 0)
+    TreeService:spawnForest(tostring(player.UserId), plotOrigin)
+    DepositService:spawnDeposits(tostring(player.UserId), plotOrigin)
+
+    -- Apply saved ore deposit state (depletion)
+    local savedDeposits = (data :: {[string]: any}).oreDeposits
+    if savedDeposits then
+        DepositService:applySavedState(savedDeposits)
+    end
+
+    -- Nova Machina spawns at a fixed position ahead of the plot origin
+    NovaMachinaService:spawnMachina(Vector3.new(0, 0, 60))
+
+    local savedNovaMachina = (data :: {[string]: any}).novaMachina
+    if savedNovaMachina then
+        NovaMachinaService:loadProgress(savedNovaMachina)
+    end
+
     Network.getEvent(Network.Events.PlayerDataLoaded):FireClient(player, data)
     return data :: DataModel.PlayerData
 end
@@ -78,6 +106,15 @@ function SaveService:savePlayer(player: Player): boolean
         log:warn("savePlayer: no session for %s", player.Name)
         return false
     end
+
+    -- Flush live state into session before writing
+    local InventoryService   = Knit.GetService("InventoryService")
+    local DepositService     = Knit.GetService("DepositService")
+    local NovaMachinaService = Knit.GetService("NovaMachinaService")
+    ;(session :: {[string]: any}).inventory   = InventoryService:getSlotsForSave(player)
+    ;(session :: {[string]: any}).oreDeposits = DepositService:getSaveState()
+    ;(session :: {[string]: any}).novaMachina = NovaMachinaService:getProgressForSave()
+
     local DataService = Knit.GetService("DataService")
     local ok, err = DataService:save(key(player), session :: {[string]: any})
     if ok then
