@@ -1,6 +1,7 @@
 --!strict
 local RunService        = game:GetService("RunService")
 local UserInputService  = game:GetService("UserInputService")
+local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
 local Packages          = ReplicatedStorage:WaitForChild("Packages")
@@ -75,9 +76,8 @@ function CameraController:KnitStart()
         if _panning and input.UserInputType == Enum.UserInputType.MouseMovement then
             if _lastMousePos then
                 local delta = input.Position - Vector3.new(_lastMousePos.X, _lastMousePos.Y, 0)
-                local rightVec   = Vector3.new(math.cos(math.rad(_yaw)),  0, -math.sin(math.rad(_yaw)))
-                local forwardVec = Vector3.new(math.sin(math.rad(_yaw)),  0,  math.cos(math.rad(_yaw)))
-                _focus = _focus - rightVec * delta.X * 0.15 + forwardVec * delta.Y * 0.15
+                _yaw   = _yaw + delta.X * 0.35
+                _pitch = math.clamp(_pitch + delta.Y * 0.2, MIN_PITCH, MAX_PITCH)
             end
             _lastMousePos = Vector2.new(input.Position.X, input.Position.Y)
         end
@@ -98,7 +98,7 @@ function CameraController:KnitStart()
         end
     end)
 
-    -- WASD / arrow-key pan of focus point + camera update each frame
+    -- Follow character + camera update each frame
     RunService.RenderStepped:Connect(function(dt: number)
         -- Decay shake amplitude and timer
         if _shakeTime > 0 then
@@ -107,21 +107,13 @@ function CameraController:KnitStart()
             if _shakeTime <= 0 then _shakeAmp = 0 end
         end
 
-        local speed      = _dist * 0.5 * dt
-        local rightVec   = Vector3.new(math.cos(math.rad(_yaw)), 0, -math.sin(math.rad(_yaw)))
-        local forwardVec = Vector3.new(math.sin(math.rad(_yaw)), 0,  math.cos(math.rad(_yaw)))
-
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Up) then
-            _focus = _focus + forwardVec * speed
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down) then
-            _focus = _focus - forwardVec * speed
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsKeyDown(Enum.KeyCode.Left) then
-            _focus = _focus - rightVec * speed
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsKeyDown(Enum.KeyCode.Right) then
-            _focus = _focus + rightVec * speed
+        -- Track the local character's root position
+        local char = Players.LocalPlayer.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+            if hrp then
+                _focus = hrp.Position
+            end
         end
 
         updateCamera()

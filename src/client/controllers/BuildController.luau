@@ -21,6 +21,7 @@ local _ghostPart: BasePart?            = nil
 local _conveyorFromTile: {x: number, z: number}? = nil
 local _ghostConveyorPart: Part?        = nil
 local _lastSnappedTile: {x: number, z: number}? = nil
+local _ghostBaseSize: Vector3?         = nil  -- locked in when ghost is created; never read mid-tween
 
 -- ── Ghost model builders (mirrors server procedural models) ──────────────────
 
@@ -89,6 +90,7 @@ function BuildController:cancelPlacement()
     _selectedMachineId = nil
     _conveyorFromTile  = nil
     _lastSnappedTile   = nil
+    _ghostBaseSize     = nil
     if _ghostPart then
         _ghostPart:Destroy()
         _ghostPart = nil
@@ -178,7 +180,9 @@ function BuildController:KnitStart()
 
             if not _ghostPart or _ghostPart.Parent == nil then
                 if _ghostPart then _ghostPart:Destroy() end
-                _ghostPart = buildGhostBase(tile.x, tile.z, _rotation, _selectedMachineId)
+                _ghostPart     = buildGhostBase(tile.x, tile.z, _rotation, _selectedMachineId)
+                _ghostBaseSize = _ghostPart.Size
+                _lastSnappedTile = nil  -- force snap pulse on first appearance
             else
                 local wx, wz = tile.x * TILE, tile.z * TILE
                 _ghostPart.CFrame = CFrame.new(wx, _ghostPart.Size.Y / 2, wz) * CFrame.Angles(0, math.rad(_rotation), 0)
@@ -190,13 +194,13 @@ function BuildController:KnitStart()
                 or _lastSnappedTile.z ~= tile.z
             then
                 _lastSnappedTile = tile
-                if _ghostPart then
-                    local origSize = _ghostPart.Size
-                    _ghostPart.Size = origSize * 1.12
+                if _ghostPart and _ghostBaseSize then
+                    local base = _ghostBaseSize
+                    _ghostPart.Size = base * 1.12
                     TweenService:Create(
                         _ghostPart,
                         TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                        { Size = origSize }
+                        { Size = base }
                     ):Play()
                 end
             end
