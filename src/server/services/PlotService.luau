@@ -42,6 +42,15 @@ function PlotService:assignPlot(player: Player)
     _playerPlots[player.UserId]  = plotId
     log:info("Plot '%s' assigned to %s (%d)", plotId, player.Name, player.UserId)
     Network.getEvent(Network.Events.PlotInfoUpdated):FireClient(player, { plotId = plotId })
+
+    -- Spawn the forest for this plot.
+    -- Forest origin is offset from the plot tile origin.
+    local VSConfig = require(ReplicatedStorage.Shared.config.VSConfig)
+    local GameConfig = require(ReplicatedStorage.Shared.config.GameConfig)
+    local offset = VSConfig.FOREST_OFFSET_TILES
+    local forestWorld = Vector3.new(offset.x * GameConfig.TILE_SIZE_STUDS, 0, offset.z * GameConfig.TILE_SIZE_STUDS)
+    local TreeService = Knit.GetService("TreeService")
+    TreeService:spawnForest(plotId, forestWorld)
 end
 
 -- Release a player's plot on leave.
@@ -51,6 +60,8 @@ function PlotService:releasePlot(player: Player)
         _plotOwners[plotId] = nil
         _playerPlots[player.UserId] = nil
         log:info("Plot '%s' released by %s (%d)", plotId, player.Name, player.UserId)
+        local TreeService = Knit.GetService("TreeService")
+        TreeService:cleanupPlot(plotId)
     end
 end
 
