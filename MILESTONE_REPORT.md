@@ -2,10 +2,83 @@
 
 ---
 
+## Vertical Slice Alpha
+
+**Completed:** 2026-07-13
+**Commits:** `556ead7` (Task 1) through `4b7c3c4` (Task 10)
+**Base:** `a4c7b44` (Milestone 3)
+
+### What Was Built
+
+The VS Alpha delivers a complete, playable factory automation loop built across 10 implementation tasks. All server logic is authoritative. Clients receive broadcast events and render visuals independently. All machine models are procedural Parts — no Studio work required.
+
+#### Gameplay Loop
+
+Tree → hit tree 3 times → log drops → lumber mill converts log → conveyor belt moves lumber → storage chest holds it → seller station sells it → coins → buy more machines → repeat.
+
+#### Server Services
+
+| Service | Key Functions | Notes |
+|---------|--------------|-------|
+| `VSConfig` | All tuning constants | Economy, trees, machines, visual timings |
+| `TreeService` | `spawnForest`, `harvestNearestTree`, `cleanupPlot` | 12 trees per plot, health = 3, 20s regen |
+| `MachineService` | `PlaceMachine`, `RemoveMachine`, `tick`, `restorePlot` | lumber_mill only ticks; storage_chest and seller_station are passive |
+| `ConveyorService` | `PlaceConveyor`, `RemoveConveyor`, `tick`, `restoreSegments` | Adjacent-tile only; 1 item per segment in transit at a time |
+| `StorageService` | `receiveItem` | 50-item cap, per-instance inventory in save data |
+| `SellerService` | `sellItem` | Prices from VSConfig; fires `ItemSold` broadcast |
+| `SaveService` | restore on join | `restorePlot` + `restoreSegments` called after `loadPlayer` |
+
+**Network — 11 new VS broadcast events:**
+`TreeFelled`, `TreeRegrown`, `MachinePlaced`, `MachineRemoved`, `ConveyorPlaced`, `ConveyorRemoved`, `ItemTransitStarted`, `ItemDelivered`, `ItemSold`, `StorageUpdated`, `MachineOutput`
+
+**DataModel changes:**
+- `storageInventories: {[string]: {[string]: number}}` added to `PlayerData`
+- `GameConfig.STARTING_COINS` raised to `200`
+
+#### Client Controllers
+
+| Controller | Key Behavior |
+|-----------|-------------|
+| `BuildController` | Ghost preview Part, snap-to-grid, R to rotate (90° steps), left-click to place, conveyor chain mode (click from → click to), Escape to cancel |
+| `InputController` | Raycast cursor via `FindPartOnRayWithIgnoreList`, wires R/Escape/click to BuildController |
+| `CameraController` | Scriptable orbit camera; scroll zoom (15–150 studs); WASD + arrow key pan; middle-mouse drag pan; pitch clamped −80°…−15° |
+| `UIController` | 4-button shop toolbar (Lumber Mill/$0, Storage Chest/$25, Seller Station/$50, Conveyor/$5), coin label, hint label |
+| `HUDController` | Floating "+N coins" text on `ItemSold`; floating item name on `ItemDelivered`; BillboardGui on Part, rises and fades |
+| `NotificationController` | Tree fall tween (90° X-axis + fade) on `TreeFelled`/`TreeRegrown`; sliding colored Part with PointLight on `ItemTransitStarted`; 360° blade spin tween on `MachineOutput` |
+
+### Architectural Decisions
+
+1. **VSConfig as the single tuning knob.** All numeric values for the VS loop (prices, timings, capacities) live in `src/shared/config/VSConfig.luau`. Nothing is hardcoded in service bodies.
+
+2. **Procedural models only.** All machines and conveyors are built from Instance.new calls at runtime. No Roblox Studio asset work required to run the alpha.
+
+3. **In-transit items are transient.** Items in flight on conveyors are not saved. Only placed machines and conveyors are persisted; transit restarts fresh on rejoin.
+
+4. **1 item per segment per tick.** ConveyorService enforces a maximum of one in-transit item per segment at a time, keeping routing logic simple and deterministic for the VS.
+
+5. **Server fires MachinePlaced on restore.** When `restorePlot` rebuilds machines from save data, it fires `MachinePlaced` to all clients so the client-side visual layer (NotificationController blade caching, etc.) receives the same signal as a fresh placement.
+
+### Known VS-Acceptable Limitations
+
+- **MachinePlaced race on high latency:** The server fires `MachinePlaced` immediately, but the Workspace model may not have replicated to the client yet when `NotificationController` tries to cache the blade Part. A `task.wait()` or `WaitForChild` can fix this before public launch.
+- **ConveyorPlaced/ConveyorRemoved not wired in NotificationController:** The brief does not require visual effects for conveyor placement; the belt Part itself is replicated by the server. This is correct for VS scope.
+- **restorePlot has no player argument:** `MachineService:restorePlot` takes only the saved machine array. For VS single-player this is fine; multi-player support would require passing a `plotOwnerId` to scope restoration correctly.
+- **Items fall off unconnected conveyor ends:** If a conveyor ends at an empty tile with no machine or continuation, the item is silently dropped. Acceptable for VS; a warning or bounce-back is post-alpha work.
+
+### Recommendations for Milestone 4
+
+1. Implement `PowerService.TickPlot` first — blackout mechanics will affect every other service.
+2. Expand `MachineService` to support all 41 machine types using a dispatch table keyed on `machineId`.
+3. Add a server-side loop script (`src/server/loop.server.luau`) that manages a single `RunService.Heartbeat` and dispatches ticks to all simulation services at configured Hz values, rather than each service spawning its own loop.
+4. Add session locking to `SaveService` before production launch to prevent double-load on server crash.
+5. Replace procedural Part models with Studio-authored models before Milestone 7 polish.
+
+---
+
 ## Milestone 3 — Core Framework
 
 **Completed:** 2026-07-13
-**Commit:** (see git log)
+**Commit:** (see git log — `a4c7b44`)
 
 ### What Was Built
 
@@ -75,13 +148,6 @@ Replaces ad-hoc `Remotes.luau` with a structured registry:
 - **DataStore budget exhaustion** — with many concurrent players, autosave calls may exceed the DataStore request budget. Milestone 4 should add budget monitoring via `DataStoreService:GetRequestBudgetForRequestType`.
 - **No session locking** — if the server shuts down abnormally mid-save, a player could theoretically rejoin another server before the save completes. Standard ProfileService-style session locking should be added before production launch.
 - **Sound/Animation placeholders** — all asset IDs in SoundConfig and AnimationConfig are `0` (no-op). Real assets must be uploaded before Milestone 5.
-
-### Recommendations for Milestone 4
-
-1. Implement `MachineService.Tick` and `ConveyorService.TickPlot` first — they're the critical path for the simulation loop.
-2. Wire `PowerService.TickPlot` into the server loop early; blackout mechanics affect every other system.
-3. Add a server loop script (`src/server/loop.server.luau`) that runs `RunService.Heartbeat` and dispatches ticks to all simulation services at the correct Hz values defined in `GameConfig`.
-4. Write TestEZ specs alongside each service implementation — the existing spec pattern (`describe` → `it`) is established and works.
 
 ---
 

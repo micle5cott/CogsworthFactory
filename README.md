@@ -2,7 +2,9 @@
 
 **Clockpunk cozy factory automation game on Roblox.**
 
-Build and automate a Victorian clockwork factory across five biomes. Smelt ore, craft components, research new technologies, and ultimately trigger Ascension to restart with permanent bonuses.
+Build and automate a Victorian clockwork factory. Chop trees, process logs into lumber, route items on conveyor belts, store or sell products, and earn coins to expand your factory.
+
+> **Current state:** Vertical Slice Alpha — a complete 15–20 minute gameplay loop is playable end-to-end. The full milestone roadmap (biomes, research, power, drones, ascension) is planned for post-alpha.
 
 ---
 
@@ -36,12 +38,22 @@ rojo build test.project.json --output test-place.rbxl
 
 ---
 
+## Gameplay Loop (VS Alpha)
+
+1. **Harvest** — A lumber mill automatically harvests nearby trees (health = 3 hits, radius = 14 studs).
+2. **Process** — Logs are converted to lumber after 3 machine ticks (1 tick/sec).
+3. **Transport** — Conveyor belts route lumber tile by tile (2 ticks per segment) to a destination.
+4. **Store or Sell** — Storage chests hold up to 50 items. Seller stations convert items to coins.
+5. **Expand** — Use coins to buy more machines and conveyors and repeat.
+
+---
+
 ## Project Structure
 
 ```
 src/
   shared/
-    config/       Central configuration (GameConfig, EconomyConfig, SoundConfig, AnimationConfig)
+    config/       Central configuration (VSConfig, GameConfig, EconomyConfig, SoundConfig, AnimationConfig)
     data/         Static game data (ItemData, MachineData, ResearchData, BiomeData, RareNodeData)
     utils/        Utilities (Logger, Timer, Janitor, MathUtil, Validation)
     DataModel.luau  Player data schema and migration
@@ -50,16 +62,18 @@ src/
     Constants.luau  Legacy numeric constants (superseded by GameConfig)
     Remotes.luau    Legacy broadcast remotes (superseded by Network.luau)
   server/
-    services/     Knit services (DataService, SaveService, PlayerService, PlotService, ...)
+    services/     Knit services (DataService, SaveService, PlayerService, PlotService,
+                  TreeService, MachineService, ConveyorService, StorageService, SellerService, ...)
     init.server.luau  Server bootstrap
   client/
-    controllers/  Knit controllers (BuildController, UIController, ...)
+    controllers/  Knit controllers (BuildController, InputController, CameraController,
+                  UIController, HUDController, NotificationController, ...)
     init.client.luau  Client bootstrap
   gui/
     MainGui/      Root ScreenGui (populated at runtime by UIController)
 docs/
   specs/          Design documents
-  plans/          Milestone implementation plans
+  plans/          Implementation plans
   TECHNICAL_ARCHITECTURE.md
   DATA_MODEL.md
   NETWORKING.md
@@ -100,7 +114,8 @@ tests/            TestEZ spec files mirroring src/shared/data/
 | 1 | Design & Spec | Complete |
 | 2 | Repository Setup & Project Structure | Complete |
 | 3 | Core Framework | Complete |
-| 4 | Core Simulation | Pending |
-| 5 | UI & Client Systems | Pending |
+| VS Alpha | Vertical Slice Alpha | **Complete** |
+| 4 | Core Simulation (full) | Pending |
+| 5 | UI & Client Systems (full) | Pending |
 | 6 | Economy & Monetization | Pending |
 | 7 | Polish & Launch | Pending |
