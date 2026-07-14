@@ -75,6 +75,16 @@ function EconomyService:deductCoins(player: Player, amount: number): (boolean, s
     return true, nil
 end
 
+-- Force-set coins to an exact amount (dev/admin use only).
+function EconomyService:setCoins(player: Player, amount: number)
+    local data = getSession(player)
+    if not data then return end
+    data.currency.coins = math.max(0, amount)
+    local SaveService = Knit.GetService("SaveService")
+    SaveService:updateSession(player, { currency = data.currency })
+    pushBalance(player, data)
+end
+
 -- Award premium coins (granted by MarketplaceService or admin tools).
 function EconomyService:awardPremiumCoins(player: Player, amount: number): (boolean, string?)
     local ok, err = Validation.positiveAmount(amount)

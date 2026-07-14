@@ -39,6 +39,8 @@ local _machines: {[string]: MachineRecord} = {}
 local _tileOccupied: {[string]: string} = {}
 -- simple counter for unique IDs
 local _nextId = 0
+-- simulation speed multiplier (changed by DevService)
+local _tickMult: number = 1.0
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -349,13 +351,51 @@ end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────────
 
+-- ── Dev helpers (called by DevService in Studio) ──────────────────────────────
+
+function MachineService:setTickMultiplier(mult: number)
+    _tickMult = math.clamp(mult, 0.25, 20)
+end
+
+-- Removes every machine and notifies clients. Clears all service state.
+function MachineService:resetAll()
+    for id, m in pairs(_machines) do
+        if m.model then m.model:Destroy() end
+        Network.getEvent(Network.Events.MachineRemoved):FireAllClients(id)
+    end
+    _machines     = {}
+    _tileOccupied = {}
+    _nextId       = 0
+end
+
+-- Puts `count` logs into every lumber mill's input buffer.
+function MachineService:fillAllMills(count: number)
+    for _, m in pairs(_machines) do
+        if m.machineId ~= "lumber_mill" then continue end
+        for _ = 1, count do
+            if #m.inputBuffer >= 10 then break end
+            table.insert(m.inputBuffer, "log")
+        end
+    end
+end
+
+function MachineService:debugPrintState()
+    warn("── MachineService state ──────────────────")
+    for id, m in pairs(_machines) do
+        warn(string.format("  [%s] %s @ (%d,%d)  in=%d out=%d",
+            id, m.machineId, m.tileX, m.tileZ,
+            #m.inputBuffer, #m.outputBuffer))
+    end
+    if next(_machines) == nil then warn("  (no machines)") end
+end
+
 function MachineService:KnitInit() end
 
 function MachineService:KnitStart()
-    -- Simulation tick loop
+    -- Simulation tick loop — respects _tickMult set by DevService
     task.spawn(function()
         while true do
-            task.wait(1 / VSConfig.MACHINE_TICK_HZ)
+            task.wait((1 / VSConfig.MACHINE_TICK_HZ) / _tickMult)
             self:tick()
         end
     end)

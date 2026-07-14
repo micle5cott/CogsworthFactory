@@ -44,6 +44,7 @@ local _fromTile:  {[string]: string}        = {} -- tileKey → segmentId (one s
 local _toTile:    {[string]: {string}}      = {} -- tileKey → {segmentId, ...} (can merge)
 local _inTransit: {InTransitItem}           = {}
 local _nextId     = 0
+local _tickMult: number = 1.0
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -353,6 +354,39 @@ function ConveyorService:restoreSegments(
     end
 end
 
+-- ── Dev helpers ───────────────────────────────────────────────────────────────
+
+function ConveyorService:setTickMultiplier(mult: number)
+    _tickMult = math.clamp(mult, 0.25, 20)
+end
+
+-- Removes every conveyor segment and notifies clients. Clears all service state.
+function ConveyorService:resetAll()
+    _inTransit = {}
+    for id, seg in pairs(_segments) do
+        if seg.model then seg.model:Destroy() end
+        Network.getEvent(Network.Events.ConveyorRemoved):FireAllClients(id)
+    end
+    _segments = {}
+    _fromTile = {}
+    _toTile   = {}
+    _nextId   = 0
+end
+
+function ConveyorService:debugPrintState()
+    warn("── ConveyorService state ─────────────────")
+    local segCount = 0
+    for id, seg in pairs(_segments) do
+        segCount += 1
+        warn(string.format("  [%s] (%d,%d)→(%d,%d)", id, seg.fromX, seg.fromZ, seg.toX, seg.toZ))
+    end
+    if segCount == 0 then warn("  (no segments)") end
+    warn(string.format("  In-transit items: %d", #_inTransit))
+    for _, item in ipairs(_inTransit) do
+        warn(string.format("    %s on %s (%d ticks left)", item.itemId, item.segmentId, item.ticksLeft))
+    end
+end
+
 -- ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 function ConveyorService:KnitInit() end
@@ -360,7 +394,7 @@ function ConveyorService:KnitInit() end
 function ConveyorService:KnitStart()
     task.spawn(function()
         while true do
-            task.wait(1 / VSConfig.MACHINE_TICK_HZ)
+            task.wait((1 / VSConfig.MACHINE_TICK_HZ) / _tickMult)
             self:tick()
         end
     end)
