@@ -5,6 +5,9 @@
 -- To add fields: add to the relevant type + DataModel.default() + applyDefaults().
 -- To rename/remove fields: bump SCHEMA_VERSION and add a migration entry.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GameConfig = require(ReplicatedStorage.Shared.config.GameConfig)
+
 local DataModel = {}
 
 -- Increment whenever a breaking schema change is made.
@@ -126,7 +129,7 @@ export type PlayerData = {
 function DataModel.default(): PlayerData
     return {
         _version = DataModel.SCHEMA_VERSION,
-        currency = { coins = 0, premiumCoins = 0 },
+        currency = { coins = GameConfig.STARTING_COINS, premiumCoins = 0 },
         inventory = {},
         plot = {
             biomeId  = "verdant_hollow",

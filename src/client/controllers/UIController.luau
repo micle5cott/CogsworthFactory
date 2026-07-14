@@ -4,7 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages          = ReplicatedStorage:WaitForChild("Packages")
 local Knit              = require(Packages:WaitForChild("Knit"))
 
-local VSConfig = require(ReplicatedStorage.Shared.config.VSConfig)
+local VSConfig  = require(ReplicatedStorage.Shared.config.VSConfig)
+local Network   = require(ReplicatedStorage.Shared.Network)
 
 local UIController = Knit.CreateController({ Name = "UIController" })
 
@@ -150,6 +151,13 @@ function UIController:KnitStart()
     local economyService = Knit.GetService("EconomyService")
     economyService.BalanceUpdated:Connect(function(coins: number, _premiumCoins: number)
         self:SetCoinBalance(coins)
+    end)
+
+    -- Seed initial balance from PlayerDataLoaded so the HUD is correct on join
+    Network.getEvent(Network.Events.PlayerDataLoaded).OnClientEvent:Connect(function(data)
+        if data and data.currency then
+            self:SetCoinBalance(data.currency.coins)
+        end
     end)
 end
 

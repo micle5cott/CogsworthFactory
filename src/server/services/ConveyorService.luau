@@ -343,6 +343,14 @@ function ConveyorService:restoreSegments(
             s.segmentId, s.fromPosition.x, s.fromPosition.z, s.toPosition.x, s.toPosition.z
         )
     end
+
+    -- bump past restored IDs to prevent collision
+    for _, s in ipairs(saved) do
+        local n = tonumber(string.match(s.segmentId or "", "seg_(%d+)"))
+        if n and n >= _nextId then
+            _nextId = n + 1
+        end
+    end
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────────
