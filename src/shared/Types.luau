@@ -69,3 +69,5 @@ export type RareNodeRoll = {
     outputItemId: ItemId,
     announcement: string,
 }
+
+return {}
