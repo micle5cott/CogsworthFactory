@@ -91,7 +91,7 @@ local function buildModel(machineId: string, tileX: number, tileZ: number, rotat
         base.BrickColor = BrickColor.new("Nougat")
         base.Material   = Enum.Material.Wood
         base.Size       = Vector3.new(TILE - 0.2, TILE - 0.2, TILE - 0.2)
-        base.CFrame     = CFrame.new(wx, (TILE - 0.2) / 2, wz)
+        base.CFrame     = CFrame.new(wx, (TILE - 0.2) / 2, wz) * CFrame.Angles(0, math.rad(rotation), 0)
 
     elseif machineId == "seller_station" then
         base.BrickColor = BrickColor.new("Bright yellow")
@@ -145,7 +145,7 @@ end
 function MachineService:getWorldCFrame(instanceId: string): CFrame?
     local m = _machines[instanceId]
     if not m then return nil end
-    return CFrame.new(m.tileX * TILE, 1, m.tileZ * TILE)
+    return CFrame.new(m.tileX * TILE, 1, m.tileZ * TILE) * CFrame.Angles(0, math.rad(m.rotation), 0)
 end
 
 -- ── Placement ─────────────────────────────────────────────────────────────────
@@ -326,6 +326,12 @@ function MachineService:restorePlot(savedMachines: {{instanceId: string, machine
         Network.getEvent(Network.Events.MachinePlaced):FireAllClients(
             saved.instanceId, saved.machineId, saved.position.x, saved.position.z, saved.rotation
         )
+    end
+
+    -- Advance _nextId past any restored IDs to prevent collisions
+    for _, saved in ipairs(savedMachines) do
+        local n = tonumber(string.match(saved.instanceId, "^m_(%d+)$"))
+        if n and n > _nextId then _nextId = n end
     end
 end
 
