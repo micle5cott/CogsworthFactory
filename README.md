@@ -21,7 +21,7 @@ Build and automate a Victorian clockwork factory. Chop trees, process logs into 
 git clone https://github.com/micle5cott/CogsworthFactory.git
 cd CogsworthFactory
 
-# 2. Install Wally packages (Knit, Signal, TableUtil, TestEZ)
+# 2. Install Wally packages (creates Packages/ and DevPackages/)
 wally install
 
 # 3. Start Rojo sync
@@ -29,6 +29,8 @@ rojo serve default.project.json
 
 # 4. Open Roblox Studio and click "Connect" in the Rojo plugin
 ```
+
+> **Note:** `wally install` must run before `rojo serve`. The `Packages/` directory it creates is gitignored and must be generated locally.
 
 ### Running Tests
 ```bash

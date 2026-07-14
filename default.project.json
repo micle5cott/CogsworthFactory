@@ -16,7 +16,7 @@
         "$path": "src/shared"
       },
       "Packages": {
-        "$path": "packages"
+        "$path": "Packages"
       }
     },
 

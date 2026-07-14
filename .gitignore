@@ -5,8 +5,9 @@
 *.rbxmx
 
 # Wally packages (like node_modules)
-packages/
-dev-packages/
+Packages/
+ServerPackages/
+DevPackages/
 
 # OS
 .DS_Store
