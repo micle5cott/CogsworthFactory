@@ -62,6 +62,50 @@ local function burstParticles(part: BasePart, color: Color3, count: number, spee
     Debris:AddItem(emitter, 3)
 end
 
+-- ── Mill progress bar helper ──────────────────────────────────────────────────
+
+-- Creates a BillboardGui progress bar above `base` and returns the fill Frame.
+local function createMillProgressBar(base: BasePart): Frame
+    local bb = Instance.new("BillboardGui")
+    bb.Name        = "ProgressBar"
+    bb.Size        = UDim2.new(0, JuiceConfig.PROGRESS_BAR_WIDTH, 0, JuiceConfig.PROGRESS_BAR_HEIGHT)
+    bb.StudsOffset = Vector3.new(0, JuiceConfig.PROGRESS_STUDS_OFFSET, 0)
+    bb.AlwaysOnTop = false
+    bb.Parent      = base
+
+    local bg = Instance.new("Frame")
+    bg.Size                   = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3       = JuiceConfig.COLOR_PROGRESS_BG
+    bg.BackgroundTransparency = 0.2
+    bg.BorderSizePixel        = 0
+    bg.Parent                 = bb
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(0, 3)
+    bgCorner.Parent       = bg
+
+    local fill = Instance.new("Frame")
+    fill.Name             = "Fill"
+    fill.Size             = UDim2.new(0, 0, 1, 0)
+    fill.BackgroundColor3 = JuiceConfig.COLOR_PROGRESS_FG
+    fill.BorderSizePixel  = 0
+    fill.Parent           = bg
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 3)
+    fillCorner.Parent       = fill
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size                   = UDim2.new(1, 0, 0, 12)
+    lbl.Position               = UDim2.new(0, 0, -1.6, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text                   = "⚙ PROCESSING"
+    lbl.TextColor3             = Color3.fromRGB(200, 200, 200)
+    lbl.TextSize               = 10
+    lbl.Font                   = Enum.Font.GothamBold
+    lbl.Parent                 = bb
+
+    return fill
+end
+
 -- ── State ─────────────────────────────────────────────────────────────────────
 
 -- segmentId → transit visual Part currently sliding
@@ -69,6 +113,15 @@ local _transitParts: {[string]: Part} = {}
 
 -- tileKey → health bar billboard/fill references
 local _treeHealthBars: {[string]: {billboard: BillboardGui, fill: Frame}} = {}
+
+-- instanceId → mill progress bar fill Frame + last output timestamp
+local _millBars:      {[string]: {fill: Frame, lastOutput: number}} = {}
+-- segmentId → belt Texture instance (for scroll animation)
+local _beltTextures:  {[string]: Texture}                          = {}
+-- instanceId → mill base part + its origin CFrame (for vibration)
+local _vibrateMills:  {[string]: {base: BasePart, origin: CFrame}} = {}
+-- instanceId / "belt_"..segmentId → looping Sound instance
+local _loopingSounds: {[string]: Sound}                            = {}
 
 -- ── Controller ────────────────────────────────────────────────────────────────
 
@@ -389,14 +442,40 @@ function NotificationController:KnitStart()
             -- Camera shake
             local cam = Knit.GetController("CameraController")
             cam:Shake(JuiceConfig.SHAKE_MACHINE_PLACE, JuiceConfig.SHAKE_DUR_MACHINE_PLACE)
+
+            -- Lumber mill: progress bar + vibration tracking + looping hum
+            if machineId == "lumber_mill" then
+                local fill = createMillProgressBar(base)
+                _millBars[instanceId] = {fill = fill, lastOutput = tick()}
+
+                _vibrateMills[instanceId] = {base = base, origin = base.CFrame}
+
+                local hum = Instance.new("Sound")
+                hum.SoundId            = "rbxassetid://" .. JuiceConfig.SFX.MACHINE_HUM
+                hum.Volume             = 0.22
+                hum.Looped             = true
+                hum.RollOffMaxDistance = 40
+                hum.Parent             = base
+                hum:Play()
+                _loopingSounds[instanceId] = hum
+            end
         end
     end)
 
-    -- ── MachineRemoved: clean up blade reference ──────────────────────────────
+    -- ── MachineRemoved: clean up blade reference and mill state ──────────────
     Network.getEvent(Network.Events.MachineRemoved).OnClientEvent:Connect(function(
         instanceId: string
     )
         machineBlades[instanceId] = nil
+        _millBars[instanceId]     = nil
+        _vibrateMills[instanceId] = nil
+
+        local snd = _loopingSounds[instanceId]
+        if snd then
+            snd:Stop()
+            pcall(function() snd:Destroy() end)
+        end
+        _loopingSounds[instanceId] = nil
     end)
 
     -- ── TreeHit: shake trunk, wood chips, health bar, impact/crack sound ─────────
@@ -472,25 +551,108 @@ function NotificationController:KnitStart()
         spawnTransitItem(segmentId, itemId, fromX, fromZ, toX, toZ, travelSeconds)
     end)
 
-    -- ── MachineOutput: spin lumber mill blade 360° over 0.3 s ────────────────
+    -- ── MachineOutput: spin blade, reset progress bar, sparks, camera bump ───
     -- Server fires: (instanceId, itemId) — only lumber_mill produces output in VS
     Network.getEvent(Network.Events.MachineOutput).OnClientEvent:Connect(function(
         instanceId: string,
         _itemId:    string
     )
+        -- Reset progress bar timestamp
+        local bar = _millBars[instanceId]
+        if bar then
+            bar.lastOutput = tick()
+        end
+
+        -- Enhanced blade spin (360° over 0.3s)
         local blade = machineBlades[instanceId]
-        if not blade or not blade.Parent then return end
+        if blade and blade.Parent then
+            local targetCF = blade.CFrame * CFrame.Angles(0, 0, math.pi * 2)
+            TweenService:Create(blade, TweenInfo.new(0.3, Enum.EasingStyle.Linear), {
+                CFrame = targetCF
+            }):Play()
 
-        -- Tween 360 degrees around the Z axis (blade lies on its side — CFrame.Angles(0,0,pi/2))
-        -- We add a full rotation on top of the current CFrame
-        local currentCF = blade.CFrame
-        local targetCF  = currentCF * CFrame.Angles(0, 0, math.pi * 2)
+            -- Spark burst from the blade
+            burstParticles(blade, JuiceConfig.COLOR_SPARK, JuiceConfig.SPARKS_ON_OUTPUT, 14)
+        end
 
-        TweenService:Create(
-            blade,
-            TweenInfo.new(0.3, Enum.EasingStyle.Linear),
-            { CFrame = targetCF }
-        ):Play()
+        -- Light camera bump
+        local cam = Knit.GetController("CameraController")
+        cam:Shake(JuiceConfig.SHAKE_MACHINE_OUTPUT, JuiceConfig.SHAKE_DUR_OUTPUT)
+    end)
+
+    -- ── ConveyorPlaced: start belt texture scroll + belt hum ──────────────────
+    Network.getEvent(Network.Events.ConveyorPlaced).OnClientEvent:Connect(function(
+        segmentId: string,
+        _fX: number, _fZ: number, _tX: number, _tZ: number
+    )
+        task.delay(0.12, function()  -- brief delay for replication to settle
+            local belt = findConveyorPart(segmentId)
+            if not belt then return end
+
+            local tex = belt:FindFirstChildWhichIsA("Texture")
+            if tex then
+                _beltTextures[segmentId] = tex :: Texture
+            end
+
+            local snd = Instance.new("Sound")
+            snd.SoundId            = "rbxassetid://" .. JuiceConfig.SFX.BELT_LOOP
+            snd.Volume             = 0.16
+            snd.Looped             = true
+            snd.RollOffMaxDistance = 30
+            snd.Parent             = belt
+            snd:Play()
+            _loopingSounds["belt_" .. segmentId] = snd
+        end)
+    end)
+
+    -- ── ConveyorRemoved: stop belt animation + sound ──────────────────────────
+    Network.getEvent(Network.Events.ConveyorRemoved).OnClientEvent:Connect(function(
+        segmentId: string
+    )
+        _beltTextures[segmentId] = nil
+
+        local sndKey = "belt_" .. segmentId
+        local snd = _loopingSounds[sndKey]
+        if snd then
+            snd:Stop()
+            pcall(function() snd:Destroy() end)
+        end
+        _loopingSounds[sndKey] = nil
+    end)
+
+    -- ── Per-frame: progress bars, belt scroll, mill vibration ─────────────────
+    RunService.RenderStepped:Connect(function(dt: number)
+        local now = tick()
+
+        -- Lumber mill progress bars
+        for id, entry in pairs(_millBars) do
+            if not entry.fill or not entry.fill.Parent then
+                _millBars[id] = nil
+                continue
+            end
+            local elapsed  = now - entry.lastOutput
+            local fraction = math.clamp(elapsed / JuiceConfig.PROGRESS_CYCLE_SECS, 0, 1)
+            entry.fill.Size = UDim2.new(fraction, 0, 1, 0)
+        end
+
+        -- Belt texture scroll
+        for segId, tex in pairs(_beltTextures) do
+            if not tex or not tex.Parent then
+                _beltTextures[segId] = nil
+                continue
+            end
+            tex.OffsetStudsV = tex.OffsetStudsV + JuiceConfig.BELT_SCROLL_SPEED * dt
+        end
+
+        -- Mill vibration (subtle Y sine wobble)
+        for id, entry in pairs(_vibrateMills) do
+            if not entry.base or not entry.base.Parent then
+                _vibrateMills[id] = nil
+                continue
+            end
+            local wobble = math.sin(now * 15) * 0.018
+            entry.base.CFrame = entry.origin * CFrame.new(0, wobble, 0)
+        end
     end)
 end
 
