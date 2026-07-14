@@ -3,14 +3,12 @@ local RunService        = game:GetService("RunService")
 local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
-local Players           = game:GetService("Players")
 local Packages          = ReplicatedStorage:WaitForChild("Packages")
 local Knit              = require(Packages:WaitForChild("Knit"))
 
 local CameraController = Knit.CreateController({ Name = "CameraController" })
 
-local camera      = Workspace.CurrentCamera
-local _localPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
 
 -- Camera state
 local _yaw:   number  = -45   -- horizontal rotation degrees
@@ -27,6 +25,7 @@ local _panning:      boolean  = false
 local _lastMousePos: Vector2? = nil
 
 local function updateCamera()
+    _pitch = math.clamp(_pitch, MIN_PITCH, MAX_PITCH)
     local yawRad   = math.rad(_yaw)
     local pitchRad = math.rad(_pitch)
 
