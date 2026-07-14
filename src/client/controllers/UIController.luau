@@ -65,7 +65,7 @@ local function buildUI()
     coinLbl.Size            = UDim2.new(1, -8, 1, 0)
     coinLbl.Position        = UDim2.new(0, 8, 0, 0)
     coinLbl.BackgroundTransparency = 1
-    coinLbl.Text            = "$ 200"
+    coinLbl.Text            = "$ --"
     coinLbl.TextColor3      = Color3.fromRGB(255, 215, 0)
     coinLbl.TextSize        = 22
     coinLbl.Font            = Enum.Font.GothamBold

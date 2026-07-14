@@ -1,5 +1,4 @@
 --!strict
-local Players            = game:GetService("Players")
 local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 local Workspace          = game:GetService("Workspace")
 local TweenService       = game:GetService("TweenService")
@@ -11,7 +10,6 @@ local Knit               = require(Packages:WaitForChild("Knit"))
 
 local TILE = GameConfig.TILE_SIZE_STUDS
 local HUDController = Knit.CreateController({ Name = "HUDController" })
-local _localPlayer = Players.LocalPlayer
 
 -- Shows a floating "+N coins" BillboardGui above a world position, then fades out.
 local function spawnFloatingText(worldPos: Vector3, text: string)
