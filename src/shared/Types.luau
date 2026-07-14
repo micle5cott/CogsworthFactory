@@ -70,4 +70,19 @@ export type RareNodeRoll = {
     announcement: string,
 }
 
+export type InventorySlot = {
+    itemId: string,
+    count:  number,
+}
+
+export type CraftRecipe = {
+    inputs:  {[string]: number},
+    outputs: {[string]: number},
+}
+
+export type NovaMachinaData = {
+    iterationsComplete: number,
+    deliveries: {[string]: number},
+}
+
 return {}

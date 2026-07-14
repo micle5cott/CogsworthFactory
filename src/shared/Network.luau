@@ -92,34 +92,43 @@ end
 -- All remote names in one place. Adding a new endpoint = add it here.
 
 Network.Events = {
-    -- Server → all clients
-    RareNodeDiscovered   = "RareNodeDiscovered",
-    ServerAnnouncement   = "ServerAnnouncement",
-    ResearchTierUnlocked = "ResearchTierUnlocked",
-    AscensionTriggered   = "AscensionTriggered",
-    PlayerDataLoaded     = "PlayerDataLoaded",    -- fires to owning client on join
-    PlayerDataUpdated    = "PlayerDataUpdated",   -- fires to owning client on any write
-    PlotInfoUpdated      = "PlotInfoUpdated",     -- fires when plot state changes
+    -- Server → owning client
+    InventoryUpdated   = "InventoryUpdated",   -- (slots: {[number]: InventorySlot?})
+    StorageOpened      = "StorageOpened",      -- (instanceId, inventory: {[string]:number})
+    NovaMachinaUpdated = "NovaMachinaUpdated", -- (deliveries: {[string]:number}, goals: {[string]:number})
 
-    -- VS slice broadcasts (server → all clients)
-    TreeFelled          = "TreeFelled",         -- (tileX: number, tileZ: number)
-    TreeHit             = "TreeHit",            -- (tileX, tileZ, healthRemaining, maxHealth: number)
-    TreeRegrown         = "TreeRegrown",         -- (tileX: number, tileZ: number)
-    MachinePlaced       = "MachinePlaced",       -- (instanceId, machineId, tileX, tileZ, rotation)
-    MachineRemoved      = "MachineRemoved",      -- (instanceId: string)
-    ConveyorPlaced      = "ConveyorPlaced",      -- (segmentId, fromX, fromZ, toX, toZ)
-    ConveyorRemoved     = "ConveyorRemoved",     -- (segmentId: string)
-    ItemTransitStarted  = "ItemTransitStarted",  -- (segmentId, itemId, travelSeconds: number)
-    ItemDelivered       = "ItemDelivered",       -- (tileX, tileZ, itemId)
-    ItemSold            = "ItemSold",            -- (tileX, tileZ, itemId, coinsEarned)
-    StorageUpdated      = "StorageUpdated",      -- (instanceId, inventory: {[string]: number})
-    MachineOutput       = "MachineOutput",       -- (instanceId, itemId) — lumber mill produced
+    -- Server → all clients
+    PlayerDataLoaded   = "PlayerDataLoaded",
+    PlayerDataUpdated  = "PlayerDataUpdated",
+    PlotInfoUpdated    = "PlotInfoUpdated",
+    ServerAnnouncement = "ServerAnnouncement",
+    IterationComplete  = "IterationComplete",  -- (iteration: number, playerName: string)
+
+    -- World events → all clients
+    TreeFelled         = "TreeFelled",
+    TreeHit            = "TreeHit",
+    TreeRegrown        = "TreeRegrown",
+    MachinePlaced      = "MachinePlaced",
+    MachineRemoved     = "MachineRemoved",
+    ConveyorPlaced     = "ConveyorPlaced",
+    ConveyorRemoved    = "ConveyorRemoved",
+    ItemTransitStarted = "ItemTransitStarted",
+    ItemDelivered      = "ItemDelivered",
+    MachineOutput      = "MachineOutput",
+    StorageUpdated     = "StorageUpdated",
+
+    -- Deposits → all clients
+    DepositHit         = "DepositHit",         -- (depositId, remaining: number)
+    DepositDepleted    = "DepositDepleted",     -- (depositId)
+
+    -- World drops → all clients
+    ItemDropped        = "ItemDropped",         -- (dropId, itemId, count, x, y, z)
+    ItemPickedUp       = "ItemPickedUp",        -- (dropId)
 }
 
 Network.Functions = {
-    -- Client → server request/response
-    GetPlayerData        = "GetPlayerData",
-    GetPlotInfo          = "GetPlotInfo",
+    GetPlayerData = "GetPlayerData",
+    GetPlotInfo   = "GetPlotInfo",
 }
 
 -- Eagerly create all registered events on the server so clients can always

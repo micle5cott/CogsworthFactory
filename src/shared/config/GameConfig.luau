@@ -20,8 +20,8 @@ GameConfig.MACHINE_TICK_HZ            = 2
 GameConfig.POWER_TICK_HZ              = 1
 GameConfig.CONVEYOR_TICK_HZ           = 2
 
--- ── Economy ───────────────────────────────────────────────────────────────────
-GameConfig.STARTING_COINS             = 200
+-- ── Economy (legacy — unused in Phase 1) ─────────────────────────────────────
+GameConfig.STARTING_COINS             = 0
 GameConfig.STARTING_PREMIUM_COINS     = 0
 
 -- ── Plot ──────────────────────────────────────────────────────────────────────

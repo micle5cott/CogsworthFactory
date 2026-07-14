@@ -12,6 +12,18 @@ export type ItemDef = {
 local Items: {[string]: ItemDef} = {
     -- ── Raw Resources ────────────────────────────────────────────
     wood             = { id="wood",             name="Wood",             tier=1, isRaw=true },
+    log              = { id="log",              name="Log",              tier=1, isRaw=true },
+    gold_ore         = { id="gold_ore",         name="Gold Ore",         tier=1, isRaw=true, isRare=true },
+
+    -- ── Tools ────────────────────────────────────────────────────
+    chisel           = { id="chisel",           name="Chisel",           tier=1 },
+
+    -- ── Machine items (carried in inventory, placed in world) ────
+    crafting_bench_item = { id="crafting_bench_item", name="Crafting Bench", tier=1 },
+    lumber_mill_item    = { id="lumber_mill_item",    name="Lumber Mill",    tier=1 },
+    smelter_item        = { id="smelter_item",        name="Smelter",        tier=1 },
+    storage_chest_item  = { id="storage_chest_item",  name="Storage Chest",  tier=1 },
+    conveyor_belt_item  = { id="conveyor_belt_item",  name="Conveyor Belt",  tier=1 },
     stone            = { id="stone",            name="Stone",            tier=1, isRaw=true },
     iron_ore         = { id="iron_ore",         name="Iron Ore",         tier=1, isRaw=true },
     copper_ore       = { id="copper_ore",       name="Copper Ore",       tier=1, isRaw=true },
