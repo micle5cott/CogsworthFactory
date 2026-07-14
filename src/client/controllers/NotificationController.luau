@@ -31,6 +31,7 @@ local ITEM_COLORS: {[string]: BrickColor} = {
 
 -- Plays a one-shot sound. `parent` = nil → plays from SoundService (non-positional).
 local function playSound(assetId: number, parent: Instance?, volume: number?)
+    if assetId == 0 then return end
     local s = Instance.new("Sound")
     s.SoundId            = "rbxassetid://" .. assetId
     s.Volume             = volume or 0.65

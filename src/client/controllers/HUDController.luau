@@ -20,6 +20,7 @@ local HUDController = Knit.CreateController({ Name = "HUDController" })
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
 local function playSound(assetId: number, volume: number?)
+    if assetId == 0 then return end
     local s = Instance.new("Sound")
     s.SoundId = "rbxassetid://" .. assetId
     s.Volume  = volume or 0.65

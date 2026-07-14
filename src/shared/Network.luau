@@ -122,4 +122,12 @@ Network.Functions = {
     GetPlotInfo          = "GetPlotInfo",
 }
 
+-- Eagerly create all registered events on the server so clients can always
+-- connect listeners in KnitStart without waiting for a first fire.
+if IS_SERVER then
+    for _, name in pairs(Network.Events) do
+        Network.getEvent(name)
+    end
+end
+
 return Network

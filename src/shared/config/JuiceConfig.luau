@@ -40,16 +40,19 @@ JuiceConfig.POPUP_FADE_TIME  = 0.35
 -- Sound asset IDs (Roblox free audio catalog).
 -- Test each ID in Studio by right-clicking a Sound and pressing Play.
 -- Swap any silent ID with a free sound from the Creator Store.
+-- All IDs are 0 (silent) until verified free audio assets are sourced.
+-- To add a sound: find a free audio asset in the Creator Store, paste its ID here,
+-- test with right-click → Play in a Sound object, then commit.
 JuiceConfig.SFX = {
-    TREE_HIT      = 2697632351,  -- wood thud / axe impact
-    TREE_CRACK    = 3178998943,  -- heavy wood crack (final blow)
-    TREE_FALL     = 3184437502,  -- deep boom when tree hits ground
-    MACHINE_PLACE = 3675294064,  -- mechanical thud / clunk
-    MACHINE_HUM   = 3675289736,  -- industrial hum (loops on lumber mill)
-    BELT_LOOP     = 3675289736,  -- conveyor belt hum (loops)
-    STORAGE_FILL  = 3216857053,  -- wooden chest thud
-    ITEM_COLLECT  = 3730653370,  -- pop / reward collect sound
-    STEP_COMPLETE = 3730653370,  -- onboarding step complete chime
+    TREE_HIT      = 0,
+    TREE_CRACK    = 0,
+    TREE_FALL     = 0,
+    MACHINE_PLACE = 0,
+    MACHINE_HUM   = 0,
+    BELT_LOOP     = 0,
+    STORAGE_FILL  = 0,
+    ITEM_COLLECT  = 0,
+    STEP_COMPLETE = 0,
 }
 
 -- Particle colors
