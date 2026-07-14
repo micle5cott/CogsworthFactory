@@ -95,19 +95,6 @@ local function buildConveyorModel(fromX: number, fromZ: number, toX: number, toZ
     return belt
 end
 
--- Find which player owns the plot containing the from-tile.
--- For VS: single-player, so use the first player found.
-local function findPlotOwnerForTile(_tileX: number, _tileZ: number): number
-    local PlotService = Knit.GetService("PlotService")
-    for _, player in ipairs(Players:GetPlayers()) do
-        local plotId = PlotService:getPlotId(player)
-        if plotId then
-            return player.UserId
-        end
-    end
-    return 0
-end
-
 -- ── Placement ─────────────────────────────────────────────────────────────────
 
 function ConveyorService.Client:PlaceConveyor(
@@ -180,7 +167,7 @@ function ConveyorService.Client:RemoveConveyor(player: Player, segmentId: string
 
     -- Refund
     local price  = VSConfig.MACHINE_SHOP_PRICES.conveyor_belt or 5
-    local refund = math.floor(price * VSConfig.MACHINE_REFUND_FRACTION)
+    local refund = math.floor(price * (VSConfig.MACHINE_REFUND_FRACTION or 0.5))
     if refund > 0 then
         local EconomyService = Knit.GetService("EconomyService")
         EconomyService:awardCoins(player, refund)
@@ -232,11 +219,10 @@ local function deliverItem(item: InTransitItem, seg: SegmentEntry)
     local SellerService   = Knit.GetService("SellerService")
     local atTile   = MachineService:getAtTile(toKey)
 
-    Network.getEvent(Network.Events.ItemDelivered):FireAllClients(seg.toX, seg.toZ, item.itemId)
-
     if atTile then
         if atTile.machineId == "lumber_mill" then
             MachineService:receiveInput(atTile.instanceId, item.itemId)
+            Network.getEvent(Network.Events.ItemDelivered):FireAllClients(seg.toX, seg.toZ, item.itemId)
         elseif atTile.machineId == "storage_chest" then
             -- Find the player who owns this plot
             local owner = nil
@@ -244,12 +230,14 @@ local function deliverItem(item: InTransitItem, seg: SegmentEntry)
                 if p.UserId == item.plotOwnerId then owner = p break end
             end
             if owner then StorageService:receiveItem(atTile.instanceId, item.itemId, owner) end
+            Network.getEvent(Network.Events.ItemDelivered):FireAllClients(seg.toX, seg.toZ, item.itemId)
         elseif atTile.machineId == "seller_station" then
             local owner = nil
             for _, p in ipairs(Players:GetPlayers()) do
                 if p.UserId == item.plotOwnerId then owner = p break end
             end
             if owner then SellerService:sellItem(atTile.instanceId, item.itemId, owner) end
+            Network.getEvent(Network.Events.ItemDelivered):FireAllClients(seg.toX, seg.toZ, item.itemId)
         end
     else
         -- Check if another segment continues from this tile
