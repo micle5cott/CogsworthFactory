@@ -100,6 +100,19 @@ Network.Events = {
     PlayerDataLoaded     = "PlayerDataLoaded",    -- fires to owning client on join
     PlayerDataUpdated    = "PlayerDataUpdated",   -- fires to owning client on any write
     PlotInfoUpdated      = "PlotInfoUpdated",     -- fires when plot state changes
+
+    -- VS slice broadcasts (server → all clients)
+    TreeFelled          = "TreeFelled",         -- (tileX: number, tileZ: number)
+    TreeRegrown         = "TreeRegrown",         -- (tileX: number, tileZ: number)
+    MachinePlaced       = "MachinePlaced",       -- (instanceId, machineId, tileX, tileZ, rotation)
+    MachineRemoved      = "MachineRemoved",      -- (instanceId: string)
+    ConveyorPlaced      = "ConveyorPlaced",      -- (segmentId, fromX, fromZ, toX, toZ)
+    ConveyorRemoved     = "ConveyorRemoved",     -- (segmentId: string)
+    ItemTransitStarted  = "ItemTransitStarted",  -- (segmentId, itemId, travelSeconds: number)
+    ItemDelivered       = "ItemDelivered",       -- (tileX, tileZ, itemId)
+    ItemSold            = "ItemSold",            -- (tileX, tileZ, itemId, coinsEarned)
+    StorageUpdated      = "StorageUpdated",      -- (instanceId, inventory: {[string]: number})
+    MachineOutput       = "MachineOutput",       -- (instanceId, itemId) — lumber mill produced
 }
 
 Network.Functions = {

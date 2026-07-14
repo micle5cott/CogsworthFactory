@@ -118,6 +118,7 @@ export type PlayerData = {
     blueprints: {[string]: BlueprintData},
     ascension: AscensionData,
     coop: CoopData,
+    storageInventories: {[string]: {[string]: number}},  -- instanceId → itemId → count
 }
 
 -- ── Default ───────────────────────────────────────────────────────────────────
@@ -169,6 +170,7 @@ function DataModel.default(): PlayerData
             trophyCase = { nil, nil, nil, nil, nil, nil, nil, nil, nil },
         },
         coop = { members = {} },
+        storageInventories = {},
     }
 end
 

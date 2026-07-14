@@ -21,7 +21,7 @@ GameConfig.POWER_TICK_HZ              = 1
 GameConfig.CONVEYOR_TICK_HZ           = 2
 
 -- ── Economy ───────────────────────────────────────────────────────────────────
-GameConfig.STARTING_COINS             = 0
+GameConfig.STARTING_COINS             = 200
 GameConfig.STARTING_PREMIUM_COINS     = 0
 
 -- ── Plot ──────────────────────────────────────────────────────────────────────
