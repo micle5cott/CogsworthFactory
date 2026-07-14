@@ -103,6 +103,7 @@ Network.Events = {
 
     -- VS slice broadcasts (server → all clients)
     TreeFelled          = "TreeFelled",         -- (tileX: number, tileZ: number)
+    TreeHit             = "TreeHit",            -- (tileX, tileZ, healthRemaining, maxHealth: number)
     TreeRegrown         = "TreeRegrown",         -- (tileX: number, tileZ: number)
     MachinePlaced       = "MachinePlaced",       -- (instanceId, machineId, tileX, tileZ, rotation)
     MachineRemoved      = "MachineRemoved",      -- (instanceId: string)

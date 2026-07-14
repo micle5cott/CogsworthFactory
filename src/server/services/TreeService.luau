@@ -126,9 +126,17 @@ function TreeService:harvestNearestTree(centerWorld: Vector3): string?
 
         if best then
             best.health -= 1
-            if best.health <= 0 then
+            local healthAfter = best.health
+            local maxHealth   = VSConfig.TREE_HEALTH
+
+            if healthAfter <= 0 then
                 best.isFelled = true
                 best.model.Parent = nil
+
+                -- Fire hit first (CRACK sound + chip burst on client), then fell
+                Network.getEvent(Network.Events.TreeHit):FireAllClients(
+                    best.tileX, best.tileZ, 0, maxHealth
+                )
                 Network.getEvent(Network.Events.TreeFelled):FireAllClients(best.tileX, best.tileZ)
 
                 best.regenTask = task.spawn(function()
@@ -141,7 +149,11 @@ function TreeService:harvestNearestTree(centerWorld: Vector3): string?
 
                 return "log"
             end
-            -- Hit but not felled yet
+
+            -- Non-felling hit
+            Network.getEvent(Network.Events.TreeHit):FireAllClients(
+                best.tileX, best.tileZ, healthAfter, maxHealth
+            )
             return nil
         end
     end

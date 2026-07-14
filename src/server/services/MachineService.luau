@@ -93,6 +93,16 @@ local function buildModel(machineId: string, tileX: number, tileZ: number, rotat
         base.Size       = Vector3.new(TILE - 0.2, TILE - 0.2, TILE - 0.2)
         base.CFrame     = CFrame.new(wx, (TILE - 0.2) / 2, wz) * CFrame.Angles(0, math.rad(rotation), 0)
 
+        local lid = Instance.new("Part")
+        lid.Name       = "Lid"
+        lid.Size       = Vector3.new(TILE - 0.2, 0.25, TILE - 0.2)
+        lid.BrickColor = BrickColor.new("Dark orange")
+        lid.Material   = Enum.Material.Wood
+        lid.Anchored   = true
+        lid.CanCollide = false
+        lid.CFrame     = CFrame.new(wx, (TILE - 0.2) + 0.125, wz)
+        lid.Parent     = model
+
     elseif machineId == "seller_station" then
         base.BrickColor = BrickColor.new("Bright yellow")
         base.Material   = Enum.Material.SmoothPlastic
@@ -181,6 +191,7 @@ function MachineService.Client:PlaceMachine(
 
     local id    = newId()
     local model = buildModel(machineId, tileX, tileZ, rotation)
+    model:SetAttribute("InstanceId", id)
 
     local record: MachineRecord = {
         instanceId   = id,
@@ -309,6 +320,7 @@ function MachineService:restorePlot(savedMachines: {{instanceId: string, machine
         if _tileOccupied[key] then continue end  -- conflict guard
 
         local model = buildModel(saved.machineId, saved.position.x, saved.position.z, saved.rotation)
+        model:SetAttribute("InstanceId", saved.instanceId)
         local record: MachineRecord = {
             instanceId   = saved.instanceId,
             machineId    = saved.machineId,
