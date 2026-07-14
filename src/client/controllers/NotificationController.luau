@@ -419,22 +419,24 @@ function NotificationController:KnitStart()
         -- Spring scale-in on the Base Part
         local base = (model :: Model):FindFirstChild("Base") :: BasePart?
         if base then
-            local origSize = base.Size
-            base.Size = origSize * 0.01
+            if machineId ~= "storage_chest" then
+                local origSize = base.Size
+                base.Size = origSize * 0.01
 
-            -- Scale to overshoot
-            TweenService:Create(base, TweenInfo.new(
-                JuiceConfig.PLACE_SCALE_TIME * 0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
-            ), { Size = origSize * JuiceConfig.PLACE_OVERSHOOT }):Play()
+                -- Scale to overshoot
+                TweenService:Create(base, TweenInfo.new(
+                    JuiceConfig.PLACE_SCALE_TIME * 0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
+                ), { Size = origSize * JuiceConfig.PLACE_OVERSHOOT }):Play()
 
-            -- Settle to natural size
-            task.delay(JuiceConfig.PLACE_SCALE_TIME * 0.65, function()
-                if base and base.Parent then
-                    TweenService:Create(base, TweenInfo.new(
-                        JuiceConfig.PLACE_SCALE_TIME * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In
-                    ), { Size = origSize }):Play()
-                end
-            end)
+                -- Settle to natural size
+                task.delay(JuiceConfig.PLACE_SCALE_TIME * 0.65, function()
+                    if base and base.Parent then
+                        TweenService:Create(base, TweenInfo.new(
+                            JuiceConfig.PLACE_SCALE_TIME * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In
+                        ), { Size = origSize }):Play()
+                    end
+                end)
+            end
 
             -- Dust burst at the base
             burstParticles(base, JuiceConfig.COLOR_DUST, JuiceConfig.DUST_ON_PLACE, 8)
@@ -487,7 +489,9 @@ function NotificationController:KnitStart()
     )
         local isFinal = (healthRemaining <= 0)
 
-        shakeTree(tileX, tileZ, if isFinal then 8 else 5)
+        if not isFinal then
+            shakeTree(tileX, tileZ, 5)
+        end
 
         local model = findTreeModel(tileX, tileZ)
         local trunk = if model then model:FindFirstChild("Trunk") else nil
@@ -531,6 +535,7 @@ function NotificationController:KnitStart()
         tileX: number,
         tileZ: number
     )
+        removeTreeHealthBar(tileX, tileZ)
         animateTreeRegrow(tileX, tileZ)
     end)
 
