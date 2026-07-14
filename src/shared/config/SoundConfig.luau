@@ -4,7 +4,7 @@
 
 local SoundConfig = {}
 
-SoundConfig.SOUNDS: {[string]: {id: number, volume: number}} = {
+SoundConfig.SOUNDS = {
     machine_place         = { id = 0, volume = 0.8 },
     machine_remove        = { id = 0, volume = 0.6 },
     machine_running_loop  = { id = 0, volume = 0.4 },
@@ -24,7 +24,7 @@ SoundConfig.SOUNDS: {[string]: {id: number, volume: number}} = {
 }
 
 -- Biome ambient music tracks (Roblox asset IDs — placeholders).
-SoundConfig.BIOME_MUSIC: {[string]: number} = {
+SoundConfig.BIOME_MUSIC = {
     verdant_hollow  = 0,
     highland_reach  = 0,
     volcanic_depths = 0,

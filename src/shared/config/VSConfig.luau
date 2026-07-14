@@ -2,11 +2,11 @@
 local VSConfig = {}
 
 -- Economy
-VSConfig.SELL_PRICE: {[string]: number} = {
+VSConfig.SELL_PRICE = {
     lumber = 10,
     log    = 3,
 }
-VSConfig.MACHINE_SHOP_PRICES: {[string]: number} = {
+VSConfig.MACHINE_SHOP_PRICES = {
     lumber_mill    = 0,
     storage_chest  = 25,
     seller_station = 50,

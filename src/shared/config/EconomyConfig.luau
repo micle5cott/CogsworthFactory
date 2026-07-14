@@ -5,7 +5,7 @@
 local EconomyConfig = {}
 
 -- Machine shop prices (coins). 0 = free starter machine.
-EconomyConfig.MACHINE_PRICES: {[string]: number} = {
+EconomyConfig.MACHINE_PRICES = {
     -- Tier 1 (free starters)
     lumber_mill      = 0,
     stone_crusher    = 0,

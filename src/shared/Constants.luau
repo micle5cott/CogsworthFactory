@@ -3,7 +3,7 @@
 local Constants = {}
 
 -- Conveyor throughput by tier (items per minute)
-Constants.CONVEYOR_THROUGHPUT: {[number]: number} = {
+Constants.CONVEYOR_THROUGHPUT = {
     [1] = 30,
     [2] = 60,
     [3] = 120,
@@ -33,7 +33,7 @@ Constants.DRONE_CONSTRUCT_SECONDS_PER_MACHINE = 8
 Constants.TROPHY_CASE_SLOTS = 9
 
 -- Rare node chances
-Constants.RARE_NODE_CHANCE: {[string]: number} = {
+Constants.RARE_NODE_CHANCE = {
     uncommon  = 0.03,
     rare      = 0.01,
     legendary = 0.001,
@@ -50,7 +50,7 @@ Constants.SAVE_INTERVAL_SECONDS = 60
 -- Ascension
 Constants.ASCENDANT_POWER_REQUIRED_PU = 10000
 Constants.ASCENDANT_ACTIVATION_SECONDS = 60
-Constants.ASCENDANT_ACTIVATION_COST: {itemId: string, count: number} = {
+Constants.ASCENDANT_ACTIVATION_COST = {
     { itemId = "clockwork_automaton", count = 500 },
     { itemId = "pure_aether",         count = 200 },
     { itemId = "resonance_core",      count = 100 },

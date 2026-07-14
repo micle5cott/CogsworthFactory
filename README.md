@@ -92,8 +92,6 @@ tests/            TestEZ spec files mirroring src/shared/data/
 | Rojo | 7.x | Studio sync |
 | Wally | latest | Package manager |
 | Knit | 1.5.1 | Service/Controller framework |
-| Signal | 1.6.0 | Typed events |
-| TableUtil | 1.2.0 | Table helpers |
 | TestEZ | 0.4.1 | Test runner (dev) |
 
 ---

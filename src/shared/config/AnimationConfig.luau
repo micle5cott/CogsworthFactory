@@ -4,7 +4,7 @@
 
 local AnimationConfig = {}
 
-AnimationConfig.ANIMATIONS: {[string]: {id: number, looped: boolean}} = {
+AnimationConfig.ANIMATIONS = {
     machine_running  = { id = 0, looped = true  },
     machine_idle     = { id = 0, looped = true  },
     machine_offline  = { id = 0, looped = true  },

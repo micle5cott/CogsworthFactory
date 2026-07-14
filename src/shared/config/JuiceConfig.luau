@@ -61,7 +61,7 @@ JuiceConfig.COLOR_PROGRESS_BG = Color3.fromRGB(30,  30,  30)
 JuiceConfig.COLOR_PROGRESS_FG = Color3.fromRGB(80,  200, 80)
 
 -- Onboarding step labels (shown in objectives panel, Task 7)
-JuiceConfig.STEP_LABELS: {string} = {
+JuiceConfig.STEP_LABELS = {
     "Place a Lumber Mill",
     "First Lumber Produced!",
     "Connect a Conveyor",

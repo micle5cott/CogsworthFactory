@@ -50,7 +50,7 @@ GameConfig.DRONE_CARRY_CAPACITY       = 20
 GameConfig.DRONE_CONSTRUCT_SECONDS    = 8
 
 -- ── Rare nodes ────────────────────────────────────────────────────────────────
-GameConfig.RARE_NODE_CHANCE: {[string]: number} = {
+GameConfig.RARE_NODE_CHANCE = {
     uncommon  = 0.03,
     rare      = 0.01,
     legendary = 0.001,
