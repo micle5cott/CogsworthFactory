@@ -24,6 +24,10 @@ local _storageInstanceId:  string?
 
 local _deliverFrame: Frame?
 
+local _benchFrame:      Frame?
+local _benchOpen        = false
+local _benchInstanceId: string?
+
 local _hintLabel: TextLabel?
 
 -- Machine item id → machineId for build controller
@@ -168,10 +172,10 @@ local function buildInventoryScreen(gui: ScreenGui)
         local rid = recipeId
         btn.MouseButton1Click:Connect(function()
             local inventoryService = Knit.GetService("InventoryService")
-            local ok, err = inventoryService:PersonalCraft(rid)
-            if not ok and err then
-                -- briefly flash label red
-            end
+            local ok, _ = inventoryService:PersonalCraft(rid)
+            local base = Color3.fromRGB(50, 50, 75)
+            btn.BackgroundColor3 = if ok then Color3.fromRGB(40, 130, 40) else Color3.fromRGB(140, 40, 40)
+            task.delay(0.5, function() btn.BackgroundColor3 = base end)
         end)
         y += 58
     end
@@ -345,10 +349,111 @@ function UIController:closeDeliver()
     _deliverOpen = false
 end
 
+-- ── Bench Crafting UI ─────────────────────────────────────────────────────────
+
+-- Recipes displayed in a fixed order for consistency
+local BENCH_RECIPE_ORDER = {
+    "lumber_mill_item",
+    "smelter_item",
+    "storage_chest_item",
+    "conveyor_belt_item",
+}
+
+local function buildBenchCraftUI(gui: ScreenGui)
+    local numRecipes = #BENCH_RECIPE_ORDER
+    local rowH   = 62
+    local headerH = 34
+    local footerH = 12
+    local padTop  = 42
+    local bg = makeFrame(gui,
+        UDim2.new(0, 380, 0, padTop + numRecipes * (rowH + 6) + footerH),
+        UDim2.new(0.5, -190, 0.5, -130),
+        Color3.fromRGB(22, 14, 6), 0.08)
+    bg.Name    = "BenchCraftBG"
+    bg.Visible = false
+    _benchFrame = bg
+
+    makeLabel(bg, "CRAFTING BENCH",
+        UDim2.new(1, -40, 0, headerH), UDim2.new(0, 8, 0, 6), 14,
+        Color3.fromRGB(210, 155, 70))
+
+    local y = padTop
+    for _, recipeId in ipairs(BENCH_RECIPE_ORDER) do
+        local recipe = VSConfig.BENCH_RECIPES[recipeId]
+        if not recipe then continue end
+
+        local row = makeFrame(bg,
+            UDim2.new(1, -12, 0, rowH),
+            UDim2.new(0, 6, 0, y),
+            Color3.fromRGB(38, 24, 10), 0)
+
+        -- Output
+        local outParts: {string} = {}
+        for itemId, cnt in pairs(recipe.outputs) do
+            table.insert(outParts, cnt .. "× " .. itemId)
+        end
+        makeLabel(row, "→ " .. table.concat(outParts, ", "),
+            UDim2.new(1, -90, 0, 26), UDim2.new(0, 6, 0, 4), 13,
+            Color3.fromRGB(220, 195, 110))
+
+        -- Inputs
+        local inParts: {string} = {}
+        for itemId, cnt in pairs(recipe.inputs) do
+            table.insert(inParts, cnt .. "× " .. itemId)
+        end
+        makeLabel(row, table.concat(inParts, "  "),
+            UDim2.new(1, -90, 0, 22), UDim2.new(0, 6, 0, 34), 11,
+            Color3.fromRGB(155, 155, 155))
+
+        -- Craft button
+        local craftBtn = makeButton(row, "Craft",
+            UDim2.new(0, 76, 0, 46), UDim2.new(1, -82, 0, 8))
+        craftBtn.BackgroundColor3 = Color3.fromRGB(55, 100, 35)
+
+        local rid = recipeId
+        craftBtn.MouseButton1Click:Connect(function()
+            if not _benchInstanceId then return end
+            local svc = Knit.GetService("CraftingBenchService")
+            local ok, _ = svc:Craft(_benchInstanceId, rid)
+            -- Brief visual feedback on the button
+            if ok then
+                craftBtn.BackgroundColor3 = Color3.fromRGB(40, 160, 40)
+                task.delay(0.4, function()
+                    craftBtn.BackgroundColor3 = Color3.fromRGB(55, 100, 35)
+                end)
+            else
+                craftBtn.BackgroundColor3 = Color3.fromRGB(160, 40, 40)
+                task.delay(0.4, function()
+                    craftBtn.BackgroundColor3 = Color3.fromRGB(55, 100, 35)
+                end)
+            end
+        end)
+
+        y += rowH + 6
+    end
+
+    local closeBtn = makeButton(bg, "✕", UDim2.new(0, 28, 0, 28), UDim2.new(1, -34, 0, 4))
+    closeBtn.MouseButton1Click:Connect(function() UIController:closeBenchCraft() end)
+end
+
+function UIController:openBenchCraft(instanceId: string)
+    _benchInstanceId = instanceId
+    if _benchFrame then _benchFrame.Visible = true end
+    _benchOpen = true
+    UIController:closeInventory()
+    UIController:closeStorage()
+end
+
+function UIController:closeBenchCraft()
+    if _benchFrame then _benchFrame.Visible = false end
+    _benchOpen       = false
+    _benchInstanceId = nil
+end
+
 -- ── Query ─────────────────────────────────────────────────────────────────────
 
 function UIController:isAnyUIOpen(): boolean
-    return _inventoryOpen or _storageOpen or _deliverOpen
+    return _inventoryOpen or _storageOpen or _deliverOpen or _benchOpen
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -366,6 +471,7 @@ function UIController:KnitStart()
     buildInventoryScreen(gui)
     buildStorageUI(gui)
     buildDeliverUI(gui)
+    buildBenchCraftUI(gui)
 
     -- Server push: inventory changed
     Network.getEvent(Network.Events.InventoryUpdated).OnClientEvent:Connect(function(slots)

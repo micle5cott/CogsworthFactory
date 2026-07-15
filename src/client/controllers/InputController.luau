@@ -73,6 +73,13 @@ function InputController:handleEKey()
         return
     end
 
+    -- Crafting bench? (has CraftingBenchId; must come before generic InstanceId check)
+    local benchId = part:GetAttribute("CraftingBenchId")
+    if benchId then
+        UIController:openBenchCraft(benchId)
+        return
+    end
+
     -- Storage chest or machine?
     local instanceId = part:GetAttribute("InstanceId")
     if instanceId then
@@ -182,6 +189,8 @@ function InputController:KnitStart()
             UIController:setHint("[E] Mine")
         elseif part:GetAttribute("TreeTileX") then
             UIController:setHint("[E] Chop")
+        elseif part:GetAttribute("CraftingBenchId") then
+            UIController:setHint("[E] Open Crafting Bench")
         elseif part:GetAttribute("NovaMachina") then
             UIController:setHint("[E] Open Nova Machina")
         elseif part:GetAttribute("InstanceId") then

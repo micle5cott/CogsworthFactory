@@ -4,7 +4,7 @@ local VSConfig = {}
 -- Inventory
 VSConfig.INVENTORY_SLOTS      = 25
 VSConfig.STACK_SIZE           = 50
-VSConfig.ITEM_PICKUP_RADIUS   = 10   -- studs
+VSConfig.ITEM_PICKUP_RADIUS   = 40   -- studs (overhead camera; cursor can reach 30+ studs away)
 VSConfig.CONVEYOR_SNAP_RADIUS = 8    -- studs; auto-route drop to nearest conveyor input
 VSConfig.DROP_DESPAWN_SECONDS = 300  -- 5 min
 

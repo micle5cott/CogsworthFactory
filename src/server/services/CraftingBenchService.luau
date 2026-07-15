@@ -70,6 +70,10 @@ local function buildBenchModel(tileX: number, tileZ: number, rotation: number): 
     top.CFrame     = CFrame.new(wx, groundY + 1.6, wz)
     top.Parent     = model
 
+    -- Tag all parts so E-key can identify this as a bench (not a storage chest)
+    base:SetAttribute("CraftingBenchId", "pending")
+    top:SetAttribute("CraftingBenchId",  "pending")
+
     model.PrimaryPart = base
     model.Parent      = Workspace
     return model
@@ -114,6 +118,12 @@ function CraftingBenchService.Client:PlaceBench(
     local model = buildBenchModel(tileX, tileZ, rotation)
     model:SetAttribute("InstanceId", id)
     model.PrimaryPart:SetAttribute("InstanceId", id)
+    -- Update all parts' CraftingBenchId placeholder to the real id
+    for _, child in ipairs(model:GetChildren()) do
+        if child:IsA("BasePart") then
+            child:SetAttribute("CraftingBenchId", id)
+        end
+    end
 
     _benches[id]       = { instanceId = id, tileX = tileX, tileZ = tileZ, rotation = rotation, ownerId = userId, model = model }
     _tileOccupied[key] = id

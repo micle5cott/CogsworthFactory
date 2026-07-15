@@ -140,12 +140,12 @@ function BuildController:confirmPlacement()
         ok, err = machineService:PlaceMachine(_selectedMachineId, tile.x, tile.z, _rotation)
     end
     if not ok then
-        -- Flash ghost red briefly, then stay in placement mode
         setGhostValid(false)
         task.delay(0.3, function() setGhostValid(true) end)
-        if err then warn("[BuildController] PlaceMachine failed:", err) end
+        if err then warn("[BuildController] placement failed:", err) end
+    else
+        self:cancelPlacement()
     end
-    -- Stay in placement mode so player can place multiple
 end
 
 -- Single entry point called by InputController left-click in conveyor mode
