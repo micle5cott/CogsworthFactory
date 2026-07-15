@@ -38,11 +38,11 @@ VSConfig.LUMBER_MILL_HARVEST_RADIUS = 14
 -- Crafting bench
 VSConfig.CRAFTING_BENCH_MAX_PER_PLOT = 3
 
--- Machine costs (items deducted from inventory on placement)
+-- Machine costs (items deducted from inventory on placement — mirrors BENCH_RECIPES)
 VSConfig.MACHINE_COSTS = {
-    lumber_mill    = { log = 10, stone = 5, iron_ore = 3 },
-    smelter        = { stone = 8, iron_ore = 5 },
-    storage_chest  = { log = 8, iron_ore = 2 },
+    lumber_mill    = { log = 10, stone = 5 },
+    smelter        = { stone = 8, lumber = 5 },
+    storage_chest  = { log = 8, iron_ingot = 2 },
     conveyor_belt  = { log = 1 },   -- per segment
     crafting_bench = { log = 5, stone = 5 },
 }
@@ -56,11 +56,12 @@ VSConfig.PERSONAL_RECIPES = {
 }
 
 -- Bench crafting recipes
+-- Progression: logs+stone → lumber_mill → lumber → smelter → ingots → everything else
 VSConfig.BENCH_RECIPES = {
-    lumber_mill_item   = { inputs = { log = 10, stone = 5, iron_ore = 3 }, outputs = { lumber_mill_item = 1 } },
-    smelter_item       = { inputs = { stone = 8, iron_ore = 5 },           outputs = { smelter_item = 1 } },
-    storage_chest_item = { inputs = { log = 8, iron_ore = 2 },             outputs = { storage_chest_item = 1 } },
-    conveyor_belt_item = { inputs = { log = 3 },                           outputs = { conveyor_belt_item = 5 } },
+    lumber_mill_item   = { inputs = { log = 10, stone = 5 },          outputs = { lumber_mill_item = 1 } },
+    smelter_item       = { inputs = { stone = 8, lumber = 5 },        outputs = { smelter_item = 1 } },
+    storage_chest_item = { inputs = { log = 8, iron_ingot = 2 },      outputs = { storage_chest_item = 1 } },
+    conveyor_belt_item = { inputs = { log = 3 },                      outputs = { conveyor_belt_item = 5 } },
 }
 
 -- Nova Machina — Iteration I delivery goals

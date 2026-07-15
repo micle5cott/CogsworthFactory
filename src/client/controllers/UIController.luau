@@ -488,6 +488,15 @@ function UIController:KnitStart()
         if _inventoryOpen then self:refreshSlots(slots) end
     end)
 
+    -- Safety net: if both InventoryUpdated and PlayerDataLoaded fired before we connected,
+    -- pull inventory data after SaveService's 1.5s load window has definitely passed.
+    task.delay(3, function()
+        local inventoryService = Knit.GetService("InventoryService")
+        local slots = inventoryService:GetSlots()
+        _currentSlots = slots
+        if _inventoryOpen then self:refreshSlots(slots) end
+    end)
+
     -- Server push: storage opened
     Network.getEvent(Network.Events.StorageOpened).OnClientEvent:Connect(function(instanceId, inventory)
         self:openStorage(instanceId, inventory)

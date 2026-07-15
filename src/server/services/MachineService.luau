@@ -288,12 +288,28 @@ function MachineService:tick()
             end
 
         elseif m.machineId == "smelter" then
-            if m.processTimer >= VSConfig.SMELTER_PROCESS_TICKS and #m.inputBuffer > 0 then
-                m.processTimer = 0
-                local itemId = table.remove(m.inputBuffer, 1)
-                if itemId == "iron_ore" then
-                    table.insert(m.outputBuffer, "iron_ingot")
-                    Network.getEvent(Network.Events.MachineOutput):FireAllClients(id, "iron_ingot")
+            if m.processTimer >= VSConfig.SMELTER_PROCESS_TICKS then
+                -- Needs one ore AND one lumber (fuel) — both must be in the buffer
+                local oreIdx: number?    = nil
+                local lumberIdx: number? = nil
+                for i, item in ipairs(m.inputBuffer) do
+                    if not oreIdx and (item == "iron_ore" or item == "copper_ore") then
+                        oreIdx = i
+                    elseif not lumberIdx and item == "lumber" then
+                        lumberIdx = i
+                    end
+                end
+                if oreIdx and lumberIdx then
+                    m.processTimer = 0
+                    local ore = m.inputBuffer[oreIdx]
+                    -- Remove higher index first so lower index stays valid
+                    local hi = math.max(oreIdx, lumberIdx)
+                    local lo = math.min(oreIdx, lumberIdx)
+                    table.remove(m.inputBuffer, hi)
+                    table.remove(m.inputBuffer, lo)
+                    local ingot = if ore == "iron_ore" then "iron_ingot" else "copper_ingot"
+                    table.insert(m.outputBuffer, ingot)
+                    Network.getEvent(Network.Events.MachineOutput):FireAllClients(id, ingot)
                 end
             end
         end
