@@ -178,14 +178,14 @@ function TreeService:harvestNearestTree(centerWorld: Vector3): string?
     return nil
 end
 
--- Hand-chop: player hits a tree with their chisel. Drops 1 log per hit.
+-- Hand-chop: player hits a tree with their chisel. Drops logs on fell.
 function TreeService.Client:HitTree(player: Player, tileX: number, tileZ: number): boolean
-    local InventoryService = Knit.GetService("InventoryService")
-    if not InventoryService:hasItems(player, { chisel = 1 }) then return false end
-
     local char = player.Character
     local hrp  = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
     if not hrp then return false end
+
+    -- Chisel must be equipped (held in hand) — it's a Tool, not a slot item
+    if not (char and char:FindFirstChild("Chisel")) then return false end
 
     local wx   = tileX * TILE
     local wz   = tileZ * TILE

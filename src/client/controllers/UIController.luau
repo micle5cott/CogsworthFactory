@@ -113,7 +113,7 @@ local function buildInventoryScreen(gui: ScreenGui)
         slotBg.Name = "Slot_" .. i
 
         local itemLbl = makeLabel(slotBg, "",
-            UDim2.new(1, -2, 0.55, 0), UDim2.new(0, 1, 0.42, 0), 10)
+            UDim2.new(1, -2, 0.55, 0), UDim2.new(0, 1, 0.42, 0), 12)
         itemLbl.Name           = "ItemLabel"
         itemLbl.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -196,7 +196,7 @@ function UIController:refreshSlots(slots: {[number]: {itemId: string, count: num
         if slot then
             if itemLbl  then itemLbl.Text  = slot.itemId end
             if countLbl then countLbl.Text = "×" .. slot.count end
-            frame.BackgroundColor3 = Color3.fromRGB(44, 44, 66)
+            frame.BackgroundColor3 = Color3.fromRGB(55, 80, 130)
         else
             if itemLbl  then itemLbl.Text  = "" end
             if countLbl then countLbl.Text = "" end
@@ -475,6 +475,15 @@ function UIController:KnitStart()
 
     -- Server push: inventory changed
     Network.getEvent(Network.Events.InventoryUpdated).OnClientEvent:Connect(function(slots)
+        _currentSlots = slots
+        if _inventoryOpen then self:refreshSlots(slots) end
+    end)
+
+    -- Server signals data is fully loaded — pull slots now in case InventoryUpdated
+    -- fired before the listener above was connected (DataStore can return instantly in Studio)
+    Network.getEvent(Network.Events.PlayerDataLoaded).OnClientEvent:Connect(function()
+        local inventoryService = Knit.GetService("InventoryService")
+        local slots = inventoryService:GetSlots()
         _currentSlots = slots
         if _inventoryOpen then self:refreshSlots(slots) end
     end)

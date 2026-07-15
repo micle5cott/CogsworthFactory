@@ -1,4 +1,5 @@
 --!strict
+local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages          = ReplicatedStorage:WaitForChild("Packages")
 local Knit              = require(Packages:WaitForChild("Knit"))
@@ -107,17 +108,45 @@ function InventoryService:removeItems(player: Player, costs: {[string]: number})
     return true, nil
 end
 
+-- Chisel is a physical Roblox Tool in the hotbar, not a slot item.
+-- Give it to Backpack on join; CharacterAdded re-gives it after respawn.
 function InventoryService:seedChisel(player: Player)
-    -- Always ensure the player has a chisel — check specifically for it so
-    -- players returning from old save data (which may have other items) still get one.
-    if not self:hasItems(player, { chisel = 1 }) then
-        self:addItem(player, "chisel", 1)
-        log:info("Seeded chisel for %s", player.Name)
+    local char     = player.Character
+    local backpack = player:FindFirstChildOfClass("Backpack")
+    local hasIt    = (char and char:FindFirstChild("Chisel") ~= nil)
+                  or (backpack and backpack:FindFirstChild("Chisel") ~= nil)
+    if hasIt then return end
+
+    local tool = Instance.new("Tool")
+    tool.Name           = "Chisel"
+    tool.ToolTip        = "Mining Chisel — equip and hold E to mine"
+    tool.RequiresHandle = true
+    tool.CanBeDropped   = false
+
+    local handle = Instance.new("Part")
+    handle.Name     = "Handle"
+    handle.Size     = Vector3.new(0.2, 1.4, 0.2)
+    handle.BrickColor = BrickColor.new("Bright yellow")
+    handle.Material = Enum.Material.Metal
+    handle.Parent   = tool
+
+    if backpack then
+        tool.Parent = backpack
     end
+    log:info("Seeded chisel Tool for %s", player.Name)
 end
 
 function InventoryService:loadFromSave(player: Player, saved: {[number]: {itemId: string, count: number}?})
-    _sessions[player.UserId] = saved or {}
+    -- Strip any legacy chisel slot entries — chisel is now a Tool, not a slot item
+    local filtered: {[number]: {itemId: string, count: number}?} = {}
+    for k, v in pairs(saved or {}) do
+        if v and v.itemId ~= "chisel" then
+            filtered[k] = v
+        end
+    end
+    _sessions[player.UserId] = filtered
+    -- Push to client immediately; client may already be connected after DataStore latency
+    fireUpdate(player)
 end
 
 function InventoryService:getSlotsForSave(player: Player): {[number]: {itemId: string, count: number}?}
@@ -150,6 +179,21 @@ function InventoryService:KnitInit() end
 
 function InventoryService:KnitStart()
     log:info("InventoryService started (slots=%d, stack=%d)", SLOTS, STACK)
+
+    local function wireCharacter(player: Player)
+        -- Re-seed chisel each time character spawns (e.g. after death)
+        player.CharacterAdded:Connect(function()
+            task.wait(0.5)  -- let Backpack settle before parenting Tool
+            self:seedChisel(player)
+        end)
+    end
+
+    Players.PlayerAdded:Connect(function(player)
+        wireCharacter(player)
+    end)
+    for _, p in ipairs(Players:GetPlayers()) do
+        wireCharacter(p)
+    end
 end
 
 return InventoryService

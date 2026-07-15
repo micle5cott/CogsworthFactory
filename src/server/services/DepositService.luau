@@ -214,8 +214,8 @@ function DepositService.Client:HitDeposit(player: Player, depositId: string): (s
     local dist = (hrp.Position - Vector3.new(wx, hrp.Position.Y, wz)).Magnitude
     if dist > 20 then return nil, nil end
 
-    local InventoryService = Knit.GetService("InventoryService")
-    if not InventoryService:hasItems(player, { chisel = 1 }) then return nil, nil end
+    -- Chisel must be equipped (held in hand) — it's a Tool, not a slot item
+    if not (char and char:FindFirstChild("Chisel")) then return nil, nil end
 
     -- Count this swing; only yield ore when hitsPerYield threshold is met
     local cfg = VSConfig.DEPOSIT_CONFIG[dep.depositType]

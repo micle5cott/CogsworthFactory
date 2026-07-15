@@ -42,6 +42,11 @@ function InputController:GetCursorPart(ignoreList: {Instance}?): (BasePart?, Vec
     return hit, pos
 end
 
+local function isChiselEquipped(): boolean
+    local char = Players.LocalPlayer.Character
+    return char ~= nil and char:FindFirstChild("Chisel") ~= nil
+end
+
 -- E-key context handler: checks what Part is under the cursor and dispatches
 function InputController:handleEKey()
     local UIController = Knit.GetController("UIController")
@@ -53,12 +58,21 @@ function InputController:handleEKey()
     if dropId then
         local worldDropService = Knit.GetService("WorldDropService")
         worldDropService:PickupDrop(dropId)
+        -- brief pickup confirmation in the hint
+        local rawName = part.Name  -- e.g. "Drop_log" or "Drop_iron_ore"
+        local itemName = rawName:match("^Drop_(.+)$") or rawName
+        UIController:setHint("+ " .. itemName)
+        task.delay(0.6, function() UIController:setHint("") end)
         return
     end
 
     -- Deposit (rock)?
     local depositId = part:GetAttribute("DepositId")
     if depositId then
+        if not isChiselEquipped() then
+            UIController:setHint("Equip Chisel [press 1] to mine")
+            return
+        end
         local depositService = Knit.GetService("DepositService")
         depositService:HitDeposit(depositId)
         return
@@ -68,6 +82,10 @@ function InputController:handleEKey()
     local treeTileX = part:GetAttribute("TreeTileX")
     local treeTileZ = part:GetAttribute("TreeTileZ")
     if treeTileX and treeTileZ then
+        if not isChiselEquipped() then
+            UIController:setHint("Equip Chisel [press 1] to chop")
+            return
+        end
         local treeService = Knit.GetService("TreeService")
         treeService:HitTree(treeTileX, treeTileZ)
         return
@@ -186,9 +204,17 @@ function InputController:KnitStart()
         if part:GetAttribute("DropId") then
             UIController:setHint("[E] Pick up")
         elseif part:GetAttribute("DepositId") then
-            UIController:setHint("[E] Mine")
+            if isChiselEquipped() then
+                UIController:setHint("[E] Mine (hold)")
+            else
+                UIController:setHint("Equip Chisel [1] to mine")
+            end
         elseif part:GetAttribute("TreeTileX") then
-            UIController:setHint("[E] Chop")
+            if isChiselEquipped() then
+                UIController:setHint("[E] Chop (hold)")
+            else
+                UIController:setHint("Equip Chisel [1] to chop")
+            end
         elseif part:GetAttribute("CraftingBenchId") then
             UIController:setHint("[E] Open Crafting Bench")
         elseif part:GetAttribute("NovaMachina") then
