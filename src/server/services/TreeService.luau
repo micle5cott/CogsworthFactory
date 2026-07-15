@@ -189,7 +189,7 @@ function TreeService.Client:HitTree(player: Player, tileX: number, tileZ: number
 
     local wx   = tileX * TILE
     local wz   = tileZ * TILE
-    if (hrp.Position - Vector3.new(wx, hrp.Position.Y, wz)).Magnitude > 14 then return false end
+    if (hrp.Position - Vector3.new(wx, hrp.Position.Y, wz)).Magnitude > 20 then return false end
 
     for _, trees in pairs(_plotTrees) do
         for _, node in ipairs(trees) do

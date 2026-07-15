@@ -108,14 +108,11 @@ function InventoryService:removeItems(player: Player, costs: {[string]: number})
 end
 
 function InventoryService:seedChisel(player: Player)
-    local slots       = getSlots(player)
-    local hasAnything = false
-    for i = 1, SLOTS do
-        if slots[i] then hasAnything = true; break end
-    end
-    if not hasAnything then
+    -- Always ensure the player has a chisel — check specifically for it so
+    -- players returning from old save data (which may have other items) still get one.
+    if not self:hasItems(player, { chisel = 1 }) then
         self:addItem(player, "chisel", 1)
-        log:info("Seeded chisel for new player %s", player.Name)
+        log:info("Seeded chisel for %s", player.Name)
     end
 end
 

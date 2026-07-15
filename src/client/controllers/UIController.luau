@@ -413,6 +413,16 @@ function UIController:KnitStart()
     hintLabel.TextStrokeTransparency = 0.4
 
     _hintLabel = hintLabel
+
+    -- Persistent corner label reminding the player how to open inventory
+    local tabReminder = makeLabel(gui, "[TAB] Inventory",
+        UDim2.new(0, 180, 0, 22), UDim2.new(0, 12, 0, 12), 12,
+        Color3.fromRGB(160, 160, 200))
+    tabReminder.Name           = "TabReminder"
+    tabReminder.AnchorPoint    = Vector2.new(0, 0)
+    tabReminder.TextXAlignment = Enum.TextXAlignment.Left
+    tabReminder.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+    tabReminder.TextStrokeTransparency = 0.5
 end
 
 function UIController:setHint(text: string)

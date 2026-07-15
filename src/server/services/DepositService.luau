@@ -210,7 +210,7 @@ function DepositService.Client:HitDeposit(player: Player, depositId: string): (s
     local wx   = dep.tileX * TILE
     local wz   = dep.tileZ * TILE
     local dist = (hrp.Position - Vector3.new(wx, hrp.Position.Y, wz)).Magnitude
-    if dist > 12 then return nil, nil end
+    if dist > 20 then return nil, nil end
 
     local InventoryService = Knit.GetService("InventoryService")
     if not InventoryService:hasItems(player, { chisel = 1 }) then return nil, nil end
