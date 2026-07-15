@@ -24,6 +24,8 @@ local _storageInstanceId:  string?
 
 local _deliverFrame: Frame?
 
+local _hintLabel: TextLabel?
+
 -- Machine item id → machineId for build controller
 local MACHINE_ITEMS: {[string]: string} = {
     lumber_mill_item    = "lumber_mill",
@@ -400,21 +402,21 @@ function UIController:KnitStart()
         game:GetService("Debris"):AddItem(ann, 8)
     end)
 
-    -- Hint label: show E-key prompts and build mode status
+    -- Hint label: E-key prompts and build mode status, center-bottom of screen
     local hintLabel = makeLabel(gui, "",
-        UDim2.new(0, 400, 0, 28), UDim2.new(0.5, -200, 0, 56), 14,
-        Color3.fromRGB(240, 230, 100))
-    hintLabel.Name        = "HintLabel"
-    hintLabel.AnchorPoint = Vector2.new(0.5, 0)
+        UDim2.new(0, 500, 0, 32), UDim2.new(0.5, -250, 1, -70), 15,
+        Color3.fromRGB(255, 240, 100))
+    hintLabel.Name            = "HintLabel"
+    hintLabel.AnchorPoint     = Vector2.new(0.5, 1)
+    hintLabel.TextXAlignment  = Enum.TextXAlignment.Center
+    hintLabel.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+    hintLabel.TextStrokeTransparency = 0.4
 
-    -- Expose hint label for other controllers to update
-    self._hintLabel = hintLabel
+    _hintLabel = hintLabel
 end
 
 function UIController:setHint(text: string)
-    if self._hintLabel then
-        (self._hintLabel :: TextLabel).Text = text
-    end
+    if _hintLabel then _hintLabel.Text = text end
 end
 
 return UIController

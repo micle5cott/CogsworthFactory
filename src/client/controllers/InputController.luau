@@ -1,5 +1,6 @@
 --!strict
 local UserInputService  = game:GetService("UserInputService")
+local RunService        = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
 local Players           = game:GetService("Players")
@@ -95,13 +96,14 @@ function InputController:KnitStart()
     local UIController    = Knit.GetController("UIController")
 
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-
-        -- TAB: toggle inventory regardless of build mode
+        -- TAB: check BEFORE gameProcessed — Roblox leaderboard also binds to Tab
+        -- and marks it gameProcessed, which would block our inventory toggle.
         if input.KeyCode == Enum.KeyCode.Tab then
             UIController:toggleInventory()
             return
         end
+
+        if gameProcessed then return end
 
         -- Block other keys when a UI panel is open
         if UIController:isAnyUIOpen() then return end
@@ -136,6 +138,39 @@ function InputController:KnitStart()
                 BuildController:cancelPlacement()
                 UIController:setHint("")
             end
+        end
+    end)
+
+    -- Per-frame: update the cursor hint based on what the cursor is hovering
+    RunService.RenderStepped:Connect(function()
+        if UIController:isAnyUIOpen() then
+            UIController:setHint("")
+            return
+        end
+        if BuildController:isInPlacementMode() then
+            UIController:setHint("[LMB] Place  ·  [R] Rotate  ·  [ESC] Cancel")
+            return
+        end
+        if BuildController:isInConveyorMode() then
+            UIController:setHint("[LMB] Set tile  ·  [LMB] Connect  ·  [RMB] Cancel")
+            return
+        end
+
+        local part = self:GetCursorPart()
+        if not part then UIController:setHint(""); return end
+
+        if part:GetAttribute("DropId") then
+            UIController:setHint("[E] Pick up")
+        elseif part:GetAttribute("DepositId") then
+            UIController:setHint("[E] Mine")
+        elseif part:GetAttribute("TreeTileX") then
+            UIController:setHint("[E] Chop")
+        elseif part:GetAttribute("NovaMachina") then
+            UIController:setHint("[E] Open Nova Machina")
+        elseif part:GetAttribute("InstanceId") then
+            UIController:setHint("[E] Interact")
+        else
+            UIController:setHint("")
         end
     end)
 end
