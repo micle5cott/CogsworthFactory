@@ -122,7 +122,16 @@ function BuildController:confirmPlacement()
     -- Stay in placement mode so player can place multiple
 end
 
--- Conveyor: left-click sets FROM tile; right-click (confirmConveyorEnd) sets TO tile.
+-- Single entry point called by InputController left-click in conveyor mode
+function BuildController:confirmConveyorStep()
+    if not _conveyorFromTile then
+        self:confirmPlacementConveyorStart()
+    else
+        self:confirmConveyorEnd()
+    end
+end
+
+-- Conveyor: left-click sets FROM tile; right-click cancels.
 function BuildController:confirmPlacementConveyorStart()
     if _mode ~= "conveyor" then return end
     local InputController = Knit.GetController("InputController")

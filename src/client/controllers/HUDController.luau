@@ -94,25 +94,22 @@ function HUDController:KnitStart()
         playSound(JuiceConfig.SFX.ITEM_COLLECT, 0.4)
     end)
 
-    -- MachineOutput → "LUMBER ✓" popup above the machine
+    -- MachineOutput → item name popup above the machine
     Network.getEvent(Network.Events.MachineOutput).OnClientEvent:Connect(function(
-        instanceId: string, _itemId: string
+        instanceId: string, itemId: string
     )
-        -- Find the machine's Base Part by InstanceId on its parent Model
         local base: BasePart? = nil
         for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj:GetAttribute("InstanceId") == instanceId then
-                local found = (obj :: Model):FindFirstChild("Base")
-                if found and found:IsA("BasePart") then
-                    base = found :: BasePart
-                    break
-                end
+            if obj:IsA("BasePart") and obj:GetAttribute("InstanceId") == instanceId then
+                base = obj :: BasePart
+                break
             end
         end
         if base then
             local pos = base.Position + Vector3.new(0, 2, 0)
-            spawnJuicyPopup(pos, "LUMBER  ✓", Color3.fromRGB(255, 220, 60))
+            spawnJuicyPopup(pos, string.upper(itemId) .. "  ✓", Color3.fromRGB(255, 220, 60))
         end
+        playSound(JuiceConfig.SFX.ITEM_COLLECT, 0.3)
     end)
 
     -- ItemDelivered → "→ DELIVERED" popup at destination tile
