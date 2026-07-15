@@ -8,12 +8,14 @@ local Packages          = ReplicatedStorage:WaitForChild("Packages")
 local Knit              = require(Packages:WaitForChild("Knit"))
 
 local GameConfig = require(ReplicatedStorage.Shared.config.GameConfig)
+local VSConfig   = require(ReplicatedStorage.Shared.config.VSConfig)
 
 local TILE = GameConfig.TILE_SIZE_STUDS
 
 local InputController = Knit.CreateController({ Name = "InputController" })
 
-local _camera = Workspace.CurrentCamera
+local _camera    = Workspace.CurrentCamera
+local _eMining   = false   -- true while E is held
 
 -- Returns tile position under cursor (used by BuildController)
 function InputController:GetCursorTilePosition(tileSize: number, ignoreList: {Instance}?): {x: number, z: number}?
@@ -119,7 +121,22 @@ function InputController:KnitStart()
 
         if input.KeyCode == Enum.KeyCode.E then
             if BuildController:isInPlacementMode() or BuildController:isInConveyorMode() then return end
-            self:handleEKey()
+            if _eMining then return end
+            _eMining = true
+            task.spawn(function()
+                while _eMining do
+                    if not UIController:isAnyUIOpen() then
+                        self:handleEKey()
+                    end
+                    task.wait(VSConfig.CHISEL_HIT_COOLDOWN)
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.E then
+            _eMining = false
         end
     end)
 

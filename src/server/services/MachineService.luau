@@ -12,6 +12,14 @@ local Network    = require(ReplicatedStorage.Shared.Network)
 local TILE = GameConfig.TILE_SIZE_STUDS
 local log  = Logger.new("MachineService")
 
+local function getTerrainY(wx: number, wz: number): number
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Include
+    params.FilterDescendantsInstances = { Workspace.Terrain }
+    local result = Workspace:Raycast(Vector3.new(wx, 500, wz), Vector3.new(0, -1000, 0), params)
+    return if result then result.Position.Y else 0
+end
+
 type MachineRecord = {
     instanceId:   string,
     machineId:    string,
@@ -62,49 +70,50 @@ local function outputTile(tileX: number, tileZ: number, rotation: number): {x: n
 end
 
 local function buildModel(machineId: string, tileX: number, tileZ: number, rotation: number): Model
-    local wx, wz = tileX * TILE, tileZ * TILE
-    local model  = Instance.new("Model")
-    model.Name   = machineId .. "_" .. tileKey(tileX, tileZ)
+    local wx, wz   = tileX * TILE, tileZ * TILE
+    local groundY  = getTerrainY(wx, wz)
+    local model    = Instance.new("Model")
+    model.Name     = machineId .. "_" .. tileKey(tileX, tileZ)
 
     local base = Instance.new("Part")
     base.Name     = "Base"
     base.Anchored = true
     base.Size     = Vector3.new(TILE - 0.2, 2, TILE - 0.2)
-    base.CFrame   = CFrame.new(wx, 1, wz) * CFrame.Angles(0, math.rad(rotation), 0)
+    base.CFrame   = CFrame.new(wx, groundY + 1, wz) * CFrame.Angles(0, math.rad(rotation), 0)
 
     if machineId == "lumber_mill" then
         base.BrickColor = BrickColor.new("Medium stone grey")
         base.Material   = Enum.Material.SmoothPlastic
         local blade = Instance.new("Part")
-        blade.Name      = "Blade"
-        blade.Shape     = Enum.PartType.Cylinder
-        blade.Size      = Vector3.new(0.4, TILE - 0.5, TILE - 0.5)
+        blade.Name       = "Blade"
+        blade.Shape      = Enum.PartType.Cylinder
+        blade.Size       = Vector3.new(0.4, TILE - 0.5, TILE - 0.5)
         blade.BrickColor = BrickColor.new("Bright yellow")
-        blade.Material  = Enum.Material.Metal
-        blade.Anchored  = true
-        blade.CFrame    = CFrame.new(wx, 3, wz) * CFrame.Angles(0, 0, math.pi / 2)
-        blade.Parent    = model
+        blade.Material   = Enum.Material.Metal
+        blade.Anchored   = true
+        blade.CFrame     = CFrame.new(wx, groundY + 3, wz) * CFrame.Angles(0, 0, math.pi / 2)
+        blade.Parent     = model
 
     elseif machineId == "smelter" then
         base.BrickColor = BrickColor.new("Bright red")
         base.Material   = Enum.Material.SmoothPlastic
         base.Size       = Vector3.new(TILE - 0.2, 3, TILE - 0.2)
-        base.CFrame     = CFrame.new(wx, 1.5, wz) * CFrame.Angles(0, math.rad(rotation), 0)
+        base.CFrame     = CFrame.new(wx, groundY + 1.5, wz) * CFrame.Angles(0, math.rad(rotation), 0)
         local chimney = Instance.new("Part")
-        chimney.Name      = "Chimney"
-        chimney.Anchored  = true
+        chimney.Name       = "Chimney"
+        chimney.Anchored   = true
         chimney.CanCollide = false
-        chimney.Size      = Vector3.new(1, 2, 1)
+        chimney.Size       = Vector3.new(1, 2, 1)
         chimney.BrickColor = BrickColor.new("Dark stone grey")
-        chimney.Material  = Enum.Material.SmoothPlastic
-        chimney.CFrame    = CFrame.new(wx, 4.5, wz)
-        chimney.Parent    = model
+        chimney.Material   = Enum.Material.SmoothPlastic
+        chimney.CFrame     = CFrame.new(wx, groundY + 4.5, wz)
+        chimney.Parent     = model
 
     elseif machineId == "storage_chest" then
         base.BrickColor = BrickColor.new("Nougat")
         base.Material   = Enum.Material.Wood
         base.Size       = Vector3.new(TILE - 0.2, TILE - 0.2, TILE - 0.2)
-        base.CFrame     = CFrame.new(wx, (TILE - 0.2) / 2, wz)
+        base.CFrame     = CFrame.new(wx, groundY + (TILE - 0.2) / 2, wz)
         local lid = Instance.new("Part")
         lid.Name       = "Lid"
         lid.Size       = Vector3.new(TILE - 0.2, 0.25, TILE - 0.2)
@@ -112,7 +121,7 @@ local function buildModel(machineId: string, tileX: number, tileZ: number, rotat
         lid.Material   = Enum.Material.Wood
         lid.Anchored   = true
         lid.CanCollide = false
-        lid.CFrame     = CFrame.new(wx, (TILE - 0.2) + 0.125, wz)
+        lid.CFrame     = CFrame.new(wx, groundY + (TILE - 0.2) + 0.125, wz)
         lid.Parent     = model
     end
 

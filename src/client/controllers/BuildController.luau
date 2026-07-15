@@ -12,6 +12,15 @@ local TILE = GameConfig.TILE_SIZE_STUDS
 
 local BuildController = Knit.CreateController({ Name = "BuildController" })
 
+-- Cast downward through terrain only to find surface Y at a world XZ position.
+local function getTerrainY(wx: number, wz: number): number
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Include
+    params.FilterDescendantsInstances = { Workspace.Terrain }
+    local result = Workspace:Raycast(Vector3.new(wx, 500, wz), Vector3.new(0, -1000, 0), params)
+    return if result then result.Position.Y else 0
+end
+
 -- ── State ─────────────────────────────────────────────────────────────────────
 
 local _mode: "none" | "machine" | "conveyor" = "none"
@@ -25,25 +34,35 @@ local _ghostBaseSize: Vector3?         = nil  -- locked in when ghost is created
 
 -- ── Ghost model builders (mirrors server procedural models) ──────────────────
 
-local function buildGhostBase(tileX: number, tileZ: number, rotation: number, machineId: string): BasePart
+local function buildGhostBase(tileX: number, tileZ: number, groundY: number, rotation: number, machineId: string): BasePart
     local wx, wz = tileX * TILE, tileZ * TILE
 
     local base = Instance.new("Part")
-    base.Name      = "GhostBase"
-    base.Anchored  = true
-    base.CanCollide = false
-    base.Size      = Vector3.new(TILE - 0.2, 2, TILE - 0.2)
-    base.CFrame    = CFrame.new(wx, 1, wz) * CFrame.Angles(0, math.rad(rotation), 0)
+    base.Name         = "GhostBase"
+    base.Anchored     = true
+    base.CanCollide   = false
     base.Transparency = 0.5
 
-    if machineId == "lumber_mill" then
-        base.BrickColor = BrickColor.new("Medium stone grey")
-    elseif machineId == "storage_chest" then
+    if machineId == "storage_chest" then
         base.BrickColor = BrickColor.new("Nougat")
         base.Size       = Vector3.new(TILE - 0.2, TILE - 0.2, TILE - 0.2)
-        base.CFrame     = CFrame.new(wx, (TILE - 0.2) / 2, wz)
+        base.CFrame     = CFrame.new(wx, groundY + (TILE - 0.2) / 2, wz) * CFrame.Angles(0, math.rad(rotation), 0)
+    elseif machineId == "smelter" then
+        base.BrickColor = BrickColor.new("Bright red")
+        base.Size       = Vector3.new(TILE - 0.2, 3, TILE - 0.2)
+        base.CFrame     = CFrame.new(wx, groundY + 1.5, wz) * CFrame.Angles(0, math.rad(rotation), 0)
+    elseif machineId == "crafting_bench" then
+        base.BrickColor = BrickColor.new("Dark orange")
+        base.Size       = Vector3.new(TILE - 0.2, 1.5, TILE - 0.2)
+        base.CFrame     = CFrame.new(wx, groundY + 0.75, wz) * CFrame.Angles(0, math.rad(rotation), 0)
     elseif machineId == "seller_station" then
         base.BrickColor = BrickColor.new("Bright yellow")
+        base.Size       = Vector3.new(TILE - 0.2, 2, TILE - 0.2)
+        base.CFrame     = CFrame.new(wx, groundY + 1, wz) * CFrame.Angles(0, math.rad(rotation), 0)
+    else  -- lumber_mill and fallback
+        base.BrickColor = BrickColor.new("Medium stone grey")
+        base.Size       = Vector3.new(TILE - 0.2, 2, TILE - 0.2)
+        base.CFrame     = CFrame.new(wx, groundY + 1, wz) * CFrame.Angles(0, math.rad(rotation), 0)
     end
 
     base.Parent = Workspace
@@ -111,8 +130,15 @@ function BuildController:confirmPlacement()
     local tile = InputController:GetCursorTilePosition(TILE, ignoreList)
     if not tile then return end
 
-    local machineService = Knit.GetService("MachineService")
-    local ok, err = machineService:PlaceMachine(_selectedMachineId, tile.x, tile.z, _rotation)
+    local ok: boolean
+    local err: string?
+    if _selectedMachineId == "crafting_bench" then
+        local craftingBenchService = Knit.GetService("CraftingBenchService")
+        ok, err = craftingBenchService:PlaceBench(tile.x, tile.z, _rotation)
+    else
+        local machineService = Knit.GetService("MachineService")
+        ok, err = machineService:PlaceMachine(_selectedMachineId, tile.x, tile.z, _rotation)
+    end
     if not ok then
         -- Flash ghost red briefly, then stay in placement mode
         setGhostValid(false)
@@ -187,14 +213,16 @@ function BuildController:KnitStart()
                 return
             end
 
+            local wx, wz   = tile.x * TILE, tile.z * TILE
+            local groundY  = getTerrainY(wx, wz)
+
             if not _ghostPart or _ghostPart.Parent == nil then
                 if _ghostPart then _ghostPart:Destroy() end
-                _ghostPart     = buildGhostBase(tile.x, tile.z, _rotation, _selectedMachineId)
+                _ghostPart     = buildGhostBase(tile.x, tile.z, groundY, _rotation, _selectedMachineId)
                 _ghostBaseSize = _ghostPart.Size
                 _lastSnappedTile = nil  -- force snap pulse on first appearance
             else
-                local wx, wz = tile.x * TILE, tile.z * TILE
-                _ghostPart.CFrame = CFrame.new(wx, _ghostPart.Size.Y / 2, wz) * CFrame.Angles(0, math.rad(_rotation), 0)
+                _ghostPart.CFrame = CFrame.new(wx, groundY + _ghostPart.Size.Y / 2, wz) * CFrame.Angles(0, math.rad(_rotation), 0)
             end
 
             -- Snap pulse: brief scale pop when cursor crosses onto a new tile

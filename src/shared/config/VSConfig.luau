@@ -18,11 +18,12 @@ VSConfig.TREE_REGEN_SECONDS       = 30
 VSConfig.FOREST_ZONE_RADIUS_TILES = 8
 
 -- Deposits
+-- hitsPerYield: how many chisel swings before 1 unit of ore drops
 VSConfig.DEPOSIT_CONFIG = {
-    stone      = { infinite = true,  hitsPerYield = 1, yieldItem = "stone",      count = 8, radius = 10 },
-    iron_ore   = { infinite = false, totalYield = 50,  yieldItem = "iron_ore",   count = 4, radius = 12 },
-    copper_ore = { infinite = false, totalYield = 40,  yieldItem = "copper_ore", count = 3, radius = 12 },
-    gold_ore   = { infinite = false, totalYield = 20,  yieldItem = "gold_ore",   count = 1, radius = 15 },
+    stone      = { infinite = true,  hitsPerYield = 2, yieldItem = "stone",      count = 8, radius = 10 },
+    iron_ore   = { infinite = false, hitsPerYield = 3, totalYield = 50, yieldItem = "iron_ore",   count = 4, radius = 12 },
+    copper_ore = { infinite = false, hitsPerYield = 3, totalYield = 40, yieldItem = "copper_ore", count = 3, radius = 12 },
+    gold_ore   = { infinite = false, hitsPerYield = 5, totalYield = 20, yieldItem = "gold_ore",   count = 1, radius = 15 },
 }
 
 -- Machines

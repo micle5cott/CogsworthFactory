@@ -198,16 +198,17 @@ function TreeService.Client:HitTree(player: Player, tileX: number, tileZ: number
                 local healthAfter = node.health
                 local maxHealth   = VSConfig.TREE_HEALTH
 
-                -- Drop 1 log per hit
-                local WorldDropService = Knit.GetService("WorldDropService")
-                local dropPos = hrp.Position + Vector3.new(math.random(-2, 2), 0, math.random(-2, 2))
-                WorldDropService:dropItem("log", 1, dropPos)
-
                 if healthAfter <= 0 then
                     node.isFelled     = true
                     node.model.Parent = nil
                     Network.getEvent(Network.Events.TreeHit):FireAllClients(tileX, tileZ, 0, maxHealth)
                     Network.getEvent(Network.Events.TreeFelled):FireAllClients(tileX, tileZ)
+                    -- Drop all logs when tree falls (not per-hit)
+                    local WorldDropService = Knit.GetService("WorldDropService")
+                    for i = 1, maxHealth do
+                        local spread = Vector3.new(math.random(-3, 3), 0, math.random(-3, 3))
+                        WorldDropService:dropItem("log", 1, hrp.Position + spread)
+                    end
                     node.regenTask = task.spawn(function()
                         task.wait(VSConfig.TREE_REGEN_SECONDS)
                         node.health       = VSConfig.TREE_HEALTH

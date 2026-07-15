@@ -12,6 +12,14 @@ local Network    = require(ReplicatedStorage.Shared.Network)
 local TILE = GameConfig.TILE_SIZE_STUDS
 local log  = Logger.new("CraftingBenchService")
 
+local function getTerrainY(wx: number, wz: number): number
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Include
+    params.FilterDescendantsInstances = { Workspace.Terrain }
+    local result = Workspace:Raycast(Vector3.new(wx, 500, wz), Vector3.new(0, -1000, 0), params)
+    return if result then result.Position.Y else 0
+end
+
 local CraftingBenchService = Knit.CreateService({ Name = "CraftingBenchService", Client = {} })
 
 type BenchRecord = {
@@ -38,18 +46,19 @@ local function newId(): string
 end
 
 local function buildBenchModel(tileX: number, tileZ: number, rotation: number): Model
-    local wx, wz = tileX * TILE, tileZ * TILE
-    local model  = Instance.new("Model")
-    model.Name   = "CraftingBench_" .. tileKey(tileX, tileZ)
+    local wx, wz  = tileX * TILE, tileZ * TILE
+    local groundY = getTerrainY(wx, wz)
+    local model   = Instance.new("Model")
+    model.Name    = "CraftingBench_" .. tileKey(tileX, tileZ)
 
     local base = Instance.new("Part")
-    base.Name      = "Base"
-    base.Anchored  = true
-    base.Size      = Vector3.new(TILE - 0.2, 1.5, TILE - 0.2)
+    base.Name       = "Base"
+    base.Anchored   = true
+    base.Size       = Vector3.new(TILE - 0.2, 1.5, TILE - 0.2)
     base.BrickColor = BrickColor.new("Dark orange")
-    base.Material  = Enum.Material.Wood
-    base.CFrame    = CFrame.new(wx, 0.75, wz) * CFrame.Angles(0, math.rad(rotation), 0)
-    base.Parent    = model
+    base.Material   = Enum.Material.Wood
+    base.CFrame     = CFrame.new(wx, groundY + 0.75, wz) * CFrame.Angles(0, math.rad(rotation), 0)
+    base.Parent     = model
 
     local top = Instance.new("Part")
     top.Name       = "Top"
@@ -58,7 +67,7 @@ local function buildBenchModel(tileX: number, tileZ: number, rotation: number): 
     top.Size       = Vector3.new(TILE - 0.2, 0.2, TILE - 0.2)
     top.BrickColor = BrickColor.new("Nougat")
     top.Material   = Enum.Material.Wood
-    top.CFrame     = CFrame.new(wx, 1.6, wz)
+    top.CFrame     = CFrame.new(wx, groundY + 1.6, wz)
     top.Parent     = model
 
     model.PrimaryPart = base

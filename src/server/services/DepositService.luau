@@ -23,6 +23,7 @@ type DepositRecord = {
     tileX:       number,
     tileZ:       number,
     model:       Model?,
+    hitProgress: number,   -- swings toward next yield
 }
 
 local _deposits: {[string]: DepositRecord} = {}
@@ -160,6 +161,7 @@ function DepositService:spawnDeposits(plotId: string, originWorld: Vector3)
                     tileX       = tx,
                     tileZ       = tz,
                     model       = model,
+                    hitProgress = 0,
                 }
                 placed += 1
             end
@@ -215,6 +217,21 @@ function DepositService.Client:HitDeposit(player: Player, depositId: string): (s
     local InventoryService = Knit.GetService("InventoryService")
     if not InventoryService:hasItems(player, { chisel = 1 }) then return nil, nil end
 
+    -- Count this swing; only yield ore when hitsPerYield threshold is met
+    local cfg = VSConfig.DEPOSIT_CONFIG[dep.depositType]
+    local hitsPerYield: number = if cfg and cfg.hitsPerYield then cfg.hitsPerYield :: number else 1
+    dep.hitProgress += 1
+
+    -- Emit a lightweight hit event every swing for particles/sound
+    Network.getEvent(Network.Events.DepositHit):FireAllClients(
+        depositId, if dep.infinite then -1 else dep.remaining
+    )
+
+    if dep.hitProgress < hitsPerYield then
+        return nil, nil  -- need more swings
+    end
+    dep.hitProgress = 0  -- reset for next ore unit
+
     local yielded = dep.yieldItem
     if not dep.infinite then
         dep.remaining = math.max(0, dep.remaining - 1)
@@ -229,9 +246,6 @@ function DepositService.Client:HitDeposit(player: Player, depositId: string): (s
         dep.model = nil
         Network.getEvent(Network.Events.DepositDepleted):FireAllClients(depositId)
         log:info("Deposit %s (%s) depleted", depositId, dep.depositType)
-    else
-        local displayRemaining = if dep.infinite then -1 else dep.remaining
-        Network.getEvent(Network.Events.DepositHit):FireAllClients(depositId, displayRemaining)
     end
 
     return yielded, dep.remaining
