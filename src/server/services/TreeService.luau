@@ -12,6 +12,15 @@ local Network    = require(ReplicatedStorage.Shared.Network)
 local TILE = GameConfig.TILE_SIZE_STUDS
 local log  = Logger.new("TreeService")
 
+-- Cast downward to find terrain surface Y at a given XZ world position.
+local function getTerrainY(wx: number, wz: number): number
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Include
+    params.FilterDescendantsInstances = { Workspace.Terrain }
+    local result = Workspace:Raycast(Vector3.new(wx, 500, wz), Vector3.new(0, -1000, 0), params)
+    return if result then result.Position.Y else 0
+end
+
 type TreeNode = {
     model:     Model,
     health:    number,
@@ -30,28 +39,29 @@ local function makeTileKey(x: number, z: number): string
 end
 
 local function buildTreeModel(tileX: number, tileZ: number): Model
-    local wx, wz = tileX * TILE, tileZ * TILE
-    local model = Instance.new("Model")
-    model.Name = "Tree_" .. makeTileKey(tileX, tileZ)
+    local wx, wz  = tileX * TILE, tileZ * TILE
+    local groundY = getTerrainY(wx, wz)
+    local model   = Instance.new("Model")
+    model.Name    = "Tree_" .. makeTileKey(tileX, tileZ)
 
     local trunk = Instance.new("Part")
-    trunk.Name      = "Trunk"
-    trunk.Size      = Vector3.new(1.2, 5, 1.2)
+    trunk.Name       = "Trunk"
+    trunk.Size       = Vector3.new(1.2, 5, 1.2)
     trunk.BrickColor = BrickColor.new("Reddish brown")
-    trunk.Material  = Enum.Material.Wood
-    trunk.Anchored  = true
-    trunk.CFrame    = CFrame.new(wx, 2.5, wz)
-    trunk.Parent    = model
+    trunk.Material   = Enum.Material.Wood
+    trunk.Anchored   = true
+    trunk.CFrame     = CFrame.new(wx, groundY + 2.5, wz)
+    trunk.Parent     = model
 
     local foliage = Instance.new("Part")
-    foliage.Name      = "Foliage"
-    foliage.Shape     = Enum.PartType.Ball
-    foliage.Size      = Vector3.new(5, 5, 5)
+    foliage.Name       = "Foliage"
+    foliage.Shape      = Enum.PartType.Ball
+    foliage.Size       = Vector3.new(5, 5, 5)
     foliage.BrickColor = BrickColor.new("Bright green")
-    foliage.Material  = Enum.Material.Grass
-    foliage.Anchored  = true
-    foliage.CFrame    = CFrame.new(wx, 7.5, wz)
-    foliage.Parent    = model
+    foliage.Material   = Enum.Material.Grass
+    foliage.Anchored   = true
+    foliage.CFrame     = CFrame.new(wx, groundY + 7.5, wz)
+    foliage.Parent     = model
 
     -- Tag both model and trunk so E-key raycast can identify trees
     model:SetAttribute("TreeTileX", tileX)

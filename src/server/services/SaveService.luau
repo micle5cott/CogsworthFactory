@@ -72,30 +72,51 @@ function SaveService:loadPlayer(player: Player): DataModel.PlayerData
     InventoryService:loadFromSave(player, (data :: {[string]: any}).inventory or {})
     InventoryService:seedChisel(player)
 
-    -- Spawn world: trees, deposits, Nova Machina
-    local TreeService    = Knit.GetService("TreeService")
-    local DepositService = Knit.GetService("DepositService")
-    local NovaMachinaService = Knit.GetService("NovaMachinaService")
-
-    local plotOrigin = Vector3.new(0, 0, 0)
-    TreeService:spawnForest(tostring(player.UserId), plotOrigin)
-    DepositService:spawnDeposits(tostring(player.UserId), plotOrigin)
-
-    -- Apply saved ore deposit state (depletion)
-    local savedDeposits = (data :: {[string]: any}).oreDeposits
-    if savedDeposits then
-        DepositService:applySavedState(savedDeposits)
-    end
-
-    -- Nova Machina spawns at a fixed position ahead of the plot origin
-    NovaMachinaService:spawnMachina(Vector3.new(0, 0, 60))
-
-    local savedNovaMachina = (data :: {[string]: any}).novaMachina
-    if savedNovaMachina then
-        NovaMachinaService:loadProgress(savedNovaMachina)
-    end
-
+    -- Fire data loaded immediately so the client UI can initialize
     Network.getEvent(Network.Events.PlayerDataLoaded):FireClient(player, data)
+
+    -- Spawn world objects after the character physically lands on terrain.
+    -- This ensures originWorld uses the player's real position, not (0,0,0).
+    local TreeService        = Knit.GetService("TreeService")
+    local DepositService     = Knit.GetService("DepositService")
+    local NovaMachinaService = Knit.GetService("NovaMachinaService")
+    local savedDeposits      = (data :: {[string]: any}).oreDeposits
+    local savedNovaMachina   = (data :: {[string]: any}).novaMachina
+
+    task.spawn(function()
+        local char = player.Character
+        if not char then
+            char = player.CharacterAdded:Wait()
+        end
+        task.wait(1.5)  -- let physics settle the character onto terrain
+        local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+
+        local spawnOrigin: Vector3
+        if hrp then
+            spawnOrigin = Vector3.new(hrp.Position.X, 0, hrp.Position.Z)
+        else
+            local spawnLoc = game:GetService("Workspace"):FindFirstChildOfClass("SpawnLocation")
+            spawnOrigin = if spawnLoc
+                then Vector3.new(spawnLoc.Position.X, 0, spawnLoc.Position.Z)
+                else Vector3.new(0, 0, 0)
+        end
+
+        log:info("World spawn origin for %s: %s", player.Name, tostring(spawnOrigin))
+
+        TreeService:spawnForest(tostring(player.UserId), spawnOrigin)
+        DepositService:spawnDeposits(tostring(player.UserId), spawnOrigin)
+
+        if savedDeposits then
+            DepositService:applySavedState(savedDeposits)
+        end
+
+        NovaMachinaService:spawnMachina(spawnOrigin + Vector3.new(0, 0, 60))
+
+        if savedNovaMachina then
+            NovaMachinaService:loadProgress(savedNovaMachina)
+        end
+    end)
+
     return data :: DataModel.PlayerData
 end
 

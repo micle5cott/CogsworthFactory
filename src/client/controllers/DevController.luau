@@ -96,19 +96,19 @@ function DevController:KnitStart()
     -- ── Buttons ───────────────────────────────────────────────────────────────
 
     local resetBtn = makeBtn(panel, "Reset Plot",   1, C_RESET)
-    local coinsBtn = makeBtn(panel, "+500 Coins",   2)
+    local itemsBtn = makeBtn(panel, "Give Items",   2, C_FAST)
     local fillBtn  = makeBtn(panel, "Fill Mills",   3)
     local speedBtn = makeBtn(panel, "Speed: 1x",    4)
     local stateBtn = makeBtn(panel, "Print State",  5)
 
-    -- Reset Plot: wipes all machines, conveyors, resets coins to 200
+    -- Reset Plot: wipes all machines and conveyors
     resetBtn.MouseButton1Click:Connect(function()
         dev:ResetPlot()
     end)
 
-    -- +500 Coins
-    coinsBtn.MouseButton1Click:Connect(function()
-        dev:AddCoins(500)
+    -- Give Items: seeds 30 log, 20 stone, 15 iron_ore into inventory
+    itemsBtn.MouseButton1Click:Connect(function()
+        dev:GiveStarterItems()
     end)
 
     -- Fill Mills: puts 5 logs in each lumber mill input buffer
